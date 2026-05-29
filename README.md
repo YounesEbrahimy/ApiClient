@@ -23,25 +23,24 @@ var client = new ApiClient("https://api.myapp.com/v1");
 // Change it later (e.g. after reading config)
 client.SetBaseUrl("https://staging.myapp.com/v1");
 
+```
 For DI, register `IApiClient` and inject it wherever you need it.
 
----
-
 ## Base URL behavior
-
+```csharp
 - `null` base URL throws `ArgumentNullException` — both in constructor and `SetBaseUrl`.
 - Empty string `""` is valid — effectively disables the prefix.
 - Trailing slash is normalized automatically: `"https://api.myapp.com/v1/"` and `"https://api.myapp.com/v1"` behave identically.
 - Base URL **only affects** `GetAsync`, `PostAsync`, `PutAsync`, `PatchAsync`, `DeleteAsync`.
 - `GetSpriteAsync` and `GetCachedSpriteAsync` always use the URL you pass as-is — CDN URLs don't need a base.
 
----
+```
 
 ## HTTP Methods
 
 All methods are `async/await` via `UniTask`. They throw `ApiException` on non-2xx responses.
 
-csharp
+```csharp
 // GET — deserializes response JSON into T
 var user = await client.GetAsync<UserDto>("/users/42");
 
@@ -54,9 +53,10 @@ await client.PatchAsync<UserDto>("/users/42", new { name = "Reza" });
 await client.DeleteAsync("/users/42");
 var result = await client.DeleteAsync<DeleteResultDto>("/users/42");
 
-### Headers
+```
 
-csharp
+### Headers
+```csharp
 // Persistent — sent with every request
 client.AddHeader("Authorization", "Bearer <token>");
 client.AddHeader("X-App-Version", "2.1.0");
@@ -71,51 +71,54 @@ var data = await client.GetAsync<Dto>("/endpoint", headers: new Dictionary<strin
 client.RemoveHeader("Authorization");
 client.ClearHeaders();
 
+```
+
 ### Timeout
 
 Default is 10 seconds. Pass `timeout:` to override (value is in **seconds**).
 
-csharp
+```csharp
 var data = await client.GetAsync<Dto>("/slow-endpoint", timeout: 30);
 
-### Cancellation
+```
 
-csharp
+### Cancellation
+```csharp
 var cts = new CancellationTokenSource();
 var data = await client.GetAsync<Dto>("/endpoint", ct: cts.Token);
 
 // Cancel from anywhere
 cts.Cancel();
 
----
+```
 
 ## Sprites
 
 ### Direct download (no cache)
-
-csharp
+```csharp
 var sprite = await client.GetSpriteAsync("https://cdn.example.com/avatar.png");
 image.sprite = sprite;
+
+```
 
 ### Cached download
 
 Saves to `Application.persistentDataPath/sprite_cache/` as PNG. Uses a JSON index to track URLs and cache timestamps.
 
-csharp
+```csharp
 // Default: 14-day cache
 var sprite = await client.GetCachedSpriteAsync("https://cdn.example.com/avatar.png");
 
 // Custom TTL
 var sprite = await client.GetCachedSpriteAsync("https://cdn.example.com/avatar.png", cacheDays: 7);
 
+```
+
 Cache hit path: read bytes from disk → decode → return sprite. No network call.  
 Cache miss or expired: download → save to disk → update index → return sprite.
 
----
-
 ## Error handling
-
-csharp
+```csharp
 try
 {
 var user = await client.GetAsync<UserDto>("/users/99");
@@ -129,7 +132,7 @@ catch (OperationCanceledException)
 // request was cancelled
 }
 
----
+```
 
 ## Concurrency notes
 
