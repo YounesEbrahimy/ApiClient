@@ -7,7 +7,7 @@ A Unity HTTP client built on `UnityWebRequest` + `UniTask`. Handles JSON request
 ## Dependencies
 
 - [UniTask](https://github.com/Cysharp/UniTask) — async/await on Unity's main thread without `Task`
-- [Newtonsoft.Json](https://github.com/JamesNK/Newtonsoft.Json) — JSON serialization
+- `Newtonsoft.Json` — JSON serialization
 - `UnityEngine.Networking` — built-in, no install needed
 
 ---
