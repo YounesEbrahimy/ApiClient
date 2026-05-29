@@ -27,14 +27,12 @@ client.SetBaseUrl("https://staging.myapp.com/v1");
 For DI, register `IApiClient` and inject it wherever you need it.
 
 ## Base URL behavior
-```csharp
+
 - `null` base URL throws `ArgumentNullException` — both in constructor and `SetBaseUrl`.
 - Empty string `""` is valid — effectively disables the prefix.
 - Trailing slash is normalized automatically: `"https://api.myapp.com/v1/"` and `"https://api.myapp.com/v1"` behave identically.
 - Base URL **only affects** `GetAsync`, `PostAsync`, `PutAsync`, `PatchAsync`, `DeleteAsync`.
 - `GetSpriteAsync` and `GetCachedSpriteAsync` always use the URL you pass as-is — CDN URLs don't need a base.
-
-```
 
 ## HTTP Methods
 
