@@ -41,5 +41,5 @@ jobs:
         with:
           projectPath: .
           unityVersion: 6000.3.8f1
-          testMode: all
-          coverageOptions: ""
+          testMode: editmode
+          coverageOptions: "useProjectSettings"
