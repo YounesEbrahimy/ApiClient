@@ -417,6 +417,73 @@ public class ApiClientResponseTests : ApiClientTestBase
             }
         });
 
+    [UnityTest]
+    [TestCase(200, ExpectedResult = null)]
+    [TestCase(201, ExpectedResult = null)]
+    [TestCase(202, ExpectedResult = null)]
+    [TestCase(403, ExpectedResult = null)]
+    [TestCase(404, ExpectedResult = null)]
+    [TestCase(500, ExpectedResult = null)]
+    public IEnumerator GetAudioClipAsync_IfSuccessful_ReturnsSprite(int code) => UniTask.ToCoroutine(async () =>
+    {
+        // Arrange
+        MockServer.ResponseStatusCode = code;
+        MockServer.ResponseBytes = RealMp3Bytes;
+
+        try
+        {
+            // Act
+            _ = await Client.GetAudioClipAsync(MockServer.ServerUrl + "test.mp3");
+        }
+        catch (ApiException e)
+        {
+            // Assert, Fail if throws while status code indicates success with content
+            ThrowIfStatusCodeIsSuccessAndIndicatesContent(e.StatusCode);
+        }
+        catch (Exception e)
+        {
+            // Assert, Only exceptions of type ApiException must be thrown
+            Assert.Fail();
+        }
+    });
+
+    [UnityTest]
+    [TestCase(200, ExpectedResult = null)]
+    [TestCase(201, ExpectedResult = null)]
+    [TestCase(202, ExpectedResult = null)]
+    [TestCase(403, ExpectedResult = null)]
+    [TestCase(404, ExpectedResult = null)]
+    [TestCase(500, ExpectedResult = null)]
+    public IEnumerator GetCachedAudioClipAsync_IfSuccessful_CachesAndReturnsSprite(int code) =>
+        UniTask.ToCoroutine(async () =>
+        {
+            // Arrange
+            MockServer.ResponseStatusCode = code;
+            MockServer.ResponseBytes = RealMp3Bytes;
+            var url = MockServer.ServerUrl + "test.mp3";
+
+            try
+            {
+                // Act
+                _ = await Client.GetCachedAudioClipAsync(url);
+
+                var key = ApiClient.ComputeHash(url);
+                var filePath = Path.Combine(Client._cacheDir, $"{key}.mp3");
+                if (!File.Exists(filePath))
+                    throw new FileNotFoundException();
+            }
+            catch (ApiException e)
+            {
+                // Assert, Fail if throws while status code indicates success with content
+                ThrowIfStatusCodeIsSuccessAndIndicatesContent(e.StatusCode);
+            }
+            catch (Exception e)
+            {
+                // Assert, Only exceptions of type ApiException must be thrown
+                Assert.Fail();
+            }
+        });
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static TestPayload ArrangeSendPayload(TestPayload.PayloadKey sendKey)

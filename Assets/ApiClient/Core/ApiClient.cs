@@ -13,7 +13,9 @@ namespace ApiClientLib
 {
     public class ApiClient : IApiClient
     {
+        public Dictionary<string, string> Headers => _persistentHeaders;
         private readonly Dictionary<string, string> _persistentHeaders = new();
+
         internal readonly string _cacheDir;
         internal readonly string _cacheIndexPath;
 
@@ -24,9 +26,11 @@ namespace ApiClientLib
         public string BaseUrl => _baseUrl;
         private string _baseUrl = string.Empty;
 
+        // ── Constructors ──────────────────────────────────────────────────────────
+
         public ApiClient()
         {
-            _cacheDir = Path.Combine(Application.persistentDataPath, "sprite_cache");
+            _cacheDir = Path.Combine(Application.persistentDataPath, "api_client_cache");
             _cacheIndexPath = Path.Combine(_cacheDir, "index.json");
             Directory.CreateDirectory(_cacheDir);
         }
@@ -35,6 +39,8 @@ namespace ApiClientLib
         {
             SetBaseUrl(baseUrl);
         }
+
+        // ── Base Url ──────────────────────────────────────────────────────────────
 
         public void SetBaseUrl(string baseUrl)
         {
@@ -181,48 +187,110 @@ namespace ApiClientLib
             }
         }
 
-        public async UniTask<Sprite> GetCachedSpriteAsync(string url, int cacheDays = 14,
+        public UniTask<Sprite> GetCachedSpriteAsync(string url, int cacheDays = 14,
             Dictionary<string, string> headers = null, int timeout = 10, CancellationToken ct = default)
         {
-            var key = ComputeHash(url);
-            var filePath = Path.Combine(_cacheDir, $"{key}.png");
+            Sprite downloadedSprite = null;
 
-            await EnsureCacheIndexLoadedAsync();
+            return GetCachedAssetAsync(
+                url,
+                fileExtension: "png",
+                downloadToBytes: async token =>
+                {
+                    downloadedSprite = await GetSpriteAsync(url, headers, timeout, token);
+                    return downloadedSprite.texture.EncodeToPNG();
+                },
+                deserializeFromPath: async (path, token) =>
+                {
+                    if (downloadedSprite != null) return downloadedSprite;
 
-            var fileLock = _fileLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
-            await fileLock.WaitAsync(ct);
+                    var bytes = await UniTask.RunOnThreadPool(
+                        () => File.ReadAllBytes(path), cancellationToken: token);
+                    return BytesToSprite(bytes);
+                },
+                cacheDays, ct);
+        }
+
+        // ── AudioClip Methods ─────────────────────────────────────────────────────
+
+        public async UniTask<AudioClip> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
+            Dictionary<string, string> headers = null, int timeout = 10, CancellationToken ct = default)
+        {
+            var resolvedType = audioType == AudioType.UNKNOWN ? DetectAudioType(url) : audioType;
+            using var req = UnityWebRequestMultimedia.GetAudioClip(url, resolvedType);
+            ApplyHeadersAndTimeout(req, _persistentHeaders, headers, timeout);
 
             try
             {
-                var isLocalCacheValid = false;
-
-                await _globalCacheLock.WaitAsync(ct);
-                try
-                {
-                    isLocalCacheValid = File.Exists(filePath) && IsCacheValidInternal(key, cacheDays);
-                }
-                finally
-                {
-                    _globalCacheLock.Release();
-                }
-
-                if (isLocalCacheValid)
-                {
-                    var bytes = await UniTask.RunOnThreadPool(() => File.ReadAllBytes(filePath), cancellationToken: ct);
-                    return BytesToSprite(bytes);
-                }
-
-                var sprite = await GetSpriteAsync(url, headers, timeout, ct);
-
-                ct.ThrowIfCancellationRequested();
-
-                await SaveSpriteToDiskAsync(sprite, filePath, key, url);
-                return sprite;
+                await req.SendWebRequest().ToUniTask(cancellationToken: ct);
             }
-            finally
+            catch (UnityWebRequestException e)
             {
-                fileLock.Release();
+                e.UnityWebRequest.ThrowIfTimeout();
+                if (req.responseCode is >= 200 and < 300)
+                {
+                    if (IsBodyLessResponse(req.responseCode))
+                        throw new ApiException((int)req.responseCode, req.downloadHandler?.error);
+                    else
+                        throw new BadAudioClipException(e);
+                }
+                else
+                {
+                    throw new ApiException((int)req.responseCode, req.downloadHandler?.error);
+                }
             }
+
+            if (IsBodyLessResponse(req.responseCode))
+                throw new ApiException((int)req.responseCode, req.downloadHandler?.error);
+
+            try
+            {
+                var clip = DownloadHandlerAudioClip.GetContent(req);
+                if (req.result == UnityWebRequest.Result.DataProcessingError || clip == null ||
+                    clip.loadState == AudioDataLoadState.Failed)
+                    throw new Exception("Invalid audio data received.");
+
+                return clip;
+            }
+            catch (Exception e)
+            {
+                throw new BadAudioClipException(e);
+            }
+        }
+
+        public UniTask<AudioClip> GetCachedAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
+            int cacheDays = 14, Dictionary<string, string> headers = null, int timeout = 10,
+            CancellationToken ct = default)
+        {
+            var ext = GetUrlFileExtension(url);
+            if (ext == null)
+                throw new InvalidUrlException(url, null, null,
+                    "When Requesting for an AudioClip url, url must contain file extension.");
+
+            var resolvedType = audioType == AudioType.UNKNOWN ? DetectAudioType(url) : audioType;
+
+            return GetCachedAssetAsync(
+                url,
+                fileExtension: ext,
+                downloadToBytes: async token =>
+                {
+                    using var req = UnityWebRequest.Get(url);
+                    ApplyHeadersAndTimeout(req, _persistentHeaders, headers, timeout);
+                    try
+                    {
+                        await req.SendWebRequest().ToUniTask(cancellationToken: token);
+                    }
+                    catch (UnityWebRequestException e)
+                    {
+                        e.UnityWebRequest.ThrowIfTimeout();
+                        throw new ApiException((int)req.responseCode, req.downloadHandler?.error);
+                    }
+
+                    return req.downloadHandler.data;
+                },
+                deserializeFromPath: (path, token) =>
+                    LoadAudioClipFromPathAsync(path, resolvedType, token),
+                cacheDays, ct);
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────────
@@ -370,18 +438,53 @@ namespace ApiClientLib
             }
         }
 
-        private bool IsCacheValidInternal(string key, int cacheDays) =>
-            _cacheIndex.TryGetValue(key, out var entry) &&
-            DateTime.UtcNow < entry.CachedAt.AddDays(cacheDays);
+        private async UniTask<T> GetCachedAssetAsync<T>(string url, string fileExtension,
+            Func<CancellationToken, UniTask<byte[]>> downloadToBytes,
+            Func<string, CancellationToken, UniTask<T>> deserializeFromPath, int cacheDays, CancellationToken ct)
+        {
+            var key = ComputeHash(url);
+            var filePath = Path.Combine(_cacheDir, $"{key}.{fileExtension}");
 
-        private async UniTask SaveSpriteToDiskAsync(Sprite sprite, string filePath, string key, string url)
+            await EnsureCacheIndexLoadedAsync();
+
+            var fileLock = _fileLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+            await fileLock.WaitAsync(ct);
+
+            try
+            {
+                bool isLocalCacheValid;
+                await _globalCacheLock.WaitAsync(ct);
+                try
+                {
+                    isLocalCacheValid = File.Exists(filePath) && IsCacheValidInternal(key, cacheDays);
+                }
+                finally
+                {
+                    _globalCacheLock.Release();
+                }
+
+                if (isLocalCacheValid)
+                    return await deserializeFromPath(filePath, ct);
+
+                var bytes = await downloadToBytes(ct);
+                ct.ThrowIfCancellationRequested();
+                await SaveAssetToDiskAsync(bytes, filePath, key, url);
+
+                return await deserializeFromPath(filePath, ct);
+            }
+            finally
+            {
+                fileLock.Release();
+            }
+        }
+
+        private bool IsCacheValidInternal(string key, int cacheDays) =>
+            _cacheIndex.TryGetValue(key, out var entry) && DateTime.UtcNow < entry.CachedAt.AddDays(cacheDays);
+
+        private async UniTask SaveAssetToDiskAsync(byte[] bytes, string filePath, string key, string url)
         {
             if (!Directory.Exists(_cacheDir))
-            {
                 Directory.CreateDirectory(_cacheDir);
-            }
-
-            var png = sprite.texture.EncodeToPNG();
 
             await _globalCacheLock.WaitAsync();
             try
@@ -391,7 +494,7 @@ namespace ApiClientLib
 
                 await UniTask.RunOnThreadPool(() =>
                 {
-                    File.WriteAllBytes(filePath, png);
+                    File.WriteAllBytes(filePath, bytes);
                     File.WriteAllText(_cacheIndexPath, indexJson);
                 });
             }
@@ -413,6 +516,54 @@ namespace ApiClientLib
             using var sha = System.Security.Cryptography.SHA256.Create();
             var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
             return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
+        }
+
+        private static async UniTask<AudioClip> LoadAudioClipFromPathAsync(
+            string filePath, AudioType audioType, CancellationToken ct)
+        {
+            using var req = UnityWebRequestMultimedia.GetAudioClip("file://" + filePath, audioType);
+            ((DownloadHandlerAudioClip)req.downloadHandler).streamAudio = false;
+
+            try
+            {
+                await req.SendWebRequest().ToUniTask(cancellationToken: ct);
+            }
+            catch (UnityWebRequestException e)
+            {
+                throw new BadAudioClipException(e);
+            }
+
+            try
+            {
+                return DownloadHandlerAudioClip.GetContent(req);
+            }
+            catch (Exception e)
+            {
+                throw new BadAudioClipException(e);
+            }
+        }
+
+        private static AudioType DetectAudioType(string url) => GetUrlFileExtension(url, "audio") switch
+        {
+            "mp3" or "mpeg" => AudioType.MPEG,
+            "ogg" => AudioType.OGGVORBIS,
+            "acc" => AudioType.ACC,
+            "wav" => AudioType.WAV,
+            "aiff" or "aif" => AudioType.AIFF,
+            _ => AudioType.UNKNOWN
+        };
+
+        private static string GetUrlFileExtension(string url, string fallback = null)
+        {
+            try
+            {
+                var ext = Path.GetExtension(url.Split('?')[0]).TrimStart('.');
+                return string.IsNullOrWhiteSpace(ext) ? fallback : ext.ToLowerInvariant();
+            }
+            catch
+            {
+                return fallback;
+            }
         }
     }
 }

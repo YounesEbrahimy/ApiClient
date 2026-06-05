@@ -150,6 +150,30 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             );
         });
 
+    [UnityTest]
+    public IEnumerator GetAudioClipAsync_WhenTimeout_ThrowsTimeoutException() =>
+        UniTask.ToCoroutine(async () =>
+        {
+            var timeout = 1;
+            await TestRequestTimeout(
+                MockServer,
+                Client.GetAudioClipAsync(MockServer.ServerUrl + "test.mp3", timeout: timeout),
+                timeout
+            );
+        });
+
+    [UnityTest]
+    public IEnumerator GetCachedAudioClipAsync_WhenTimeout_ThrowsTimeoutException() =>
+        UniTask.ToCoroutine(async () =>
+        {
+            var timeout = 1;
+            await TestRequestTimeout(
+                MockServer,
+                Client.GetCachedAudioClipAsync(MockServer.ServerUrl + "test.mp3", timeout: timeout),
+                timeout
+            );
+        });
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static async UniTask TestRequestTimeout(MockHttpServer server, UniTask requestTask, int timeout)

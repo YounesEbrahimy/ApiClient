@@ -2,6 +2,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine.TestTools;
 using System.Collections;
 using NUnit.Framework;
+using System.Text;
 
 public class ApiClientMethodNameTests : ApiClientTestBase
 {
@@ -10,6 +11,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     {
         await TestHttpRequestMethodName(
             MockServer,
+            Encoding.UTF8.GetBytes("Hello"),
             Client.GetAsync(MockServer.ServerUrl + "api/test"),
             "GET"
         );
@@ -20,6 +22,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     {
         await TestHttpRequestMethodName(
             MockServer,
+            Encoding.UTF8.GetBytes("Hello"),
             Client.GetAsync<string>(MockServer.ServerUrl + "api/test"),
             "GET"
         );
@@ -30,6 +33,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     {
         await TestHttpRequestMethodName(
             MockServer,
+            Encoding.UTF8.GetBytes("Hello"),
             Client.PostAsync(MockServer.ServerUrl + "api/test", string.Empty),
             "POST"
         );
@@ -40,6 +44,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     {
         await TestHttpRequestMethodName(
             MockServer,
+            Encoding.UTF8.GetBytes("Hello"),
             Client.PostAsync<string>(MockServer.ServerUrl + "api/test", string.Empty),
             "POST"
         );
@@ -50,6 +55,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     {
         await TestHttpRequestMethodName(
             MockServer,
+            Encoding.UTF8.GetBytes("Hello"),
             Client.PutAsync(MockServer.ServerUrl + "api/test", string.Empty),
             "PUT"
         );
@@ -60,6 +66,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     {
         await TestHttpRequestMethodName(
             MockServer,
+            Encoding.UTF8.GetBytes("Hello"),
             Client.PutAsync<string>(MockServer.ServerUrl + "api/test", string.Empty),
             "PUT"
         );
@@ -70,6 +77,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     {
         await TestHttpRequestMethodName(
             MockServer,
+            Encoding.UTF8.GetBytes("Hello"),
             Client.PatchAsync(MockServer.ServerUrl + "api/test", string.Empty),
             "PATCH"
         );
@@ -80,6 +88,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     {
         await TestHttpRequestMethodName(
             MockServer,
+            Encoding.UTF8.GetBytes("Hello"),
             Client.PatchAsync<string>(MockServer.ServerUrl + "api/test", string.Empty),
             "PATCH"
         );
@@ -90,6 +99,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     {
         await TestHttpRequestMethodName(
             MockServer,
+            Encoding.UTF8.GetBytes("Hello"),
             Client.DeleteAsync(MockServer.ServerUrl + "api/test"),
             "DELETE"
         );
@@ -100,19 +110,43 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     {
         await TestHttpRequestMethodName(
             MockServer,
+            Encoding.UTF8.GetBytes("Hello"),
             Client.DeleteAsync<string>(MockServer.ServerUrl + "api/test"),
             "DELETE"
         );
     });
 
+    [UnityTest]
+    public IEnumerator GetSpriteAsync_CheckMethodName() => UniTask.ToCoroutine(async () =>
+    {
+        await TestHttpRequestMethodName(
+            MockServer,
+            RealPngBytes,
+            Client.GetSpriteAsync(MockServer.ServerUrl + "test.png"),
+            "GET"
+        );
+    });
+
+    [UnityTest]
+    public IEnumerator GetAudioClipAsync_CheckMethodName() => UniTask.ToCoroutine(async () =>
+    {
+        await TestHttpRequestMethodName(
+            MockServer,
+            RealMp3Bytes,
+            Client.GetAudioClipAsync(MockServer.ServerUrl + "test.mp3"),
+            "GET"
+        );
+    });
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static async UniTask TestHttpRequestMethodName(MockHttpServer server, UniTask requestTask, string method)
+    private static async UniTask TestHttpRequestMethodName(MockHttpServer server, byte[] responseBytes,
+        UniTask requestTask, string method)
     {
         // Arrange
         var spyHookTriggered = false;
         server.ResponseStatusCode = 200;
-        server.ResponseObject = "Hello";
+        server.ResponseBytes = responseBytes;
         server.OnRequestReceived = request =>
         {
             spyHookTriggered = true;
