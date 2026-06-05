@@ -42,3 +42,4 @@ jobs:
           projectPath: .
           unityVersion: 6000.3.8f1
           testMode: all
+          coverageOptions: ""
