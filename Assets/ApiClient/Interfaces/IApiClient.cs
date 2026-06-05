@@ -13,6 +13,7 @@ namespace ApiClientLib
         void AddHeader(string key, string value);
         void RemoveHeader(string key);
         void ClearHeaders();
+        Dictionary<string, string> Headers { get; }
 
         UniTask GetAsync(string url, Dictionary<string, string> headers = null, int timeout = 10,
             CancellationToken ct = default);
@@ -49,5 +50,12 @@ namespace ApiClientLib
 
         UniTask<Sprite> GetCachedSpriteAsync(string url, int cacheDays = 14, Dictionary<string, string> headers = null,
             int timeout = 10, CancellationToken ct = default);
+
+        UniTask<AudioClip> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
+            Dictionary<string, string> headers = null, int timeout = 10, CancellationToken ct = default);
+
+        UniTask<AudioClip> GetCachedAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
+            int cacheDays = 14, Dictionary<string, string> headers = null, int timeout = 10,
+            CancellationToken ct = default);
     }
 }

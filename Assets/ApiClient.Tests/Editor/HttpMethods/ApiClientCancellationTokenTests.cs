@@ -151,6 +151,30 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
             );
         });
 
+    [UnityTest]
+    public IEnumerator GetAudioClipAsync_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
+        UniTask.ToCoroutine(async () =>
+        {
+            var cts = new CancellationTokenSource();
+            await TestRequestCancellation(
+                MockServer,
+                Client.GetAudioClipAsync(MockServer.ServerUrl + "test.mp3", ct: cts.Token),
+                cts
+            );
+        });
+
+    [UnityTest]
+    public IEnumerator GetCachedAudioClipAsync_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
+        UniTask.ToCoroutine(async () =>
+        {
+            var cts = new CancellationTokenSource();
+            await TestRequestCancellation(
+                MockServer,
+                Client.GetCachedAudioClipAsync(MockServer.ServerUrl + "test.mp3", ct: cts.Token),
+                cts
+            );
+        });
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static async UniTask TestRequestCancellation(MockHttpServer server, UniTask requestTask,

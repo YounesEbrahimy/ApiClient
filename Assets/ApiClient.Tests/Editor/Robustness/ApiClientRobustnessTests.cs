@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine.TestTools;
@@ -5,6 +6,7 @@ using System.Collections;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using ApiClientLib;
+using UnityEngine;
 using System.IO;
 using System;
 
@@ -31,6 +33,33 @@ public class ApiClientRobustnessTests : ApiClientTestBase
             catch (Exception e)
             {
                 Assert.Fail(); // Fail, Since it must throw BadSpriteException
+            }
+        });
+
+    [UnityTest]
+    public IEnumerator GetAudioClipAsync_WhenServerReturnsGarbage_ThrowsBadAudioClipException() =>
+        UniTask.ToCoroutine(async () =>
+        {
+            // Arrange: Server returns non-audioClip garbage
+            MockServer.ResponseStatusCode = 200;
+            MockServer.ResponseBytes = FakeMp3Bytes;
+
+            // Since the native audio processing layer will log an error, But it's expected
+            LogAssert.Expect(LogType.Error, new Regex("FMOD"));
+
+            // Act & Assert
+            try
+            {
+                _ = await Client.GetAudioClipAsync(MockServer.ServerUrl + "bad_data.mp3");
+                Assert.Fail(); // Fail, Since it must throw BadAudioClipException
+            }
+            catch (BadAudioClipException e)
+            {
+                Assert.Pass(); // This is what we want
+            }
+            catch (Exception e)
+            {
+                Assert.Fail(); // Fail, Since it must throw BadAudioClipException
             }
         });
 
