@@ -15,47 +15,48 @@ namespace ApiClientLib
         void ClearHeaders();
         Dictionary<string, string> Headers { get; }
 
-        UniTask GetAsync(string url, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask GetAsync(string url, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
-        UniTask<T> GetAsync<T>(string url, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<T> GetAsync<T>(string url, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
-        UniTask PostAsync(string url, object body, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask PostAsync(string url, object body, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
-        UniTask<T> PostAsync<T>(string url, object body, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<T> PostAsync<T>(string url, object body, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
-        UniTask PutAsync(string url, object body, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask PutAsync(string url, object body, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
-        UniTask<T> PutAsync<T>(string url, object body, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<T> PutAsync<T>(string url, object body, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
-        UniTask PatchAsync(string url, object body, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask PatchAsync(string url, object body, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
-        UniTask<T> PatchAsync<T>(string url, object body, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<T> PatchAsync<T>(string url, object body, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
-        UniTask DeleteAsync(string url, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask DeleteAsync(string url, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
-        UniTask<T> DeleteAsync<T>(string url, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<T> DeleteAsync<T>(string url, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
-        UniTask<Sprite> GetSpriteAsync(string url, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<Sprite> GetSpriteAsync(string url, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
         UniTask<Sprite> GetCachedSpriteAsync(string url, int cacheDays = 14, Dictionary<string, string> headers = null,
-            int timeout = 10, CancellationToken ct = default);
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
 
         UniTask<AudioClip> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
-            Dictionary<string, string> headers = null, int timeout = 10, CancellationToken ct = default);
+            Dictionary<string, string> headers = null, Dictionary<string, string> queryParams = null, int timeout = 10,
+            CancellationToken ct = default);
 
         UniTask<AudioClip> GetCachedAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
-            int cacheDays = 14, Dictionary<string, string> headers = null, int timeout = 10,
-            CancellationToken ct = default);
+            int cacheDays = 14, Dictionary<string, string> headers = null,
+            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default);
     }
 }
