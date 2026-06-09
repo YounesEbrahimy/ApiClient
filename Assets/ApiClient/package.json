@@ -1,0 +1,19 @@
+{
+  "name": "com.younesebrahimy.apiclient",
+  "version": "1.0.0",
+  "displayName": "ApiClient",
+  "description": "Lightweight Unity HTTP client with optional resource caching.",
+  "unity": "6000.3",
+  "keywords": ["HTTP", "API", "HTTP-Client"],
+  "license": "MIT",
+  "author": {
+    "name": "Younes Ebrahimy"
+  },
+  "dependencies": {
+    "com.cysharp.unitask": "2.5.11",
+    "com.unity.nuget.newtonsoft-json": "3.2.2"
+  },
+  "documentationUrl": "https://github.com/YounesEbrahimy/ApiClient",
+  "changelogUrl": "https://github.com/YounesEbrahimy/ApiClient/releases",
+  "licensesUrl": "https://github.com/YounesEbrahimy/ApiClient/blob/main/LICENSE"
+}
