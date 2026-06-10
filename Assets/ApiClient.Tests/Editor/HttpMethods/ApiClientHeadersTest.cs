@@ -11,6 +11,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator GetAsyncNoBody_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(Client.GetAsync(MockServer.ServerUrl + "api/v1/headers", headers: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
@@ -19,6 +21,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator GetAsyncWithBody_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
             Client.GetAsync<string>(MockServer.ServerUrl + "api/v1/headers", headers: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
@@ -28,6 +32,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator PostAsyncNoBody_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
             Client.PostAsync(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
@@ -37,6 +43,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator PostAsyncWithBody_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
             Client.PostAsync<string>(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
@@ -46,6 +54,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator PutAsyncNoBody_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
             Client.PutAsync(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
@@ -55,6 +65,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator PutAsyncWithBody_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
             Client.PutAsync<string>(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
@@ -64,6 +76,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator PatchAsyncNoBody_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
             Client.PatchAsync(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
@@ -73,6 +87,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator PatchAsyncWithBody_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
             Client.PatchAsync<string>(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
@@ -82,6 +98,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator DeleteAsyncNoBody_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(Client.DeleteAsync(MockServer.ServerUrl + "api/v1/headers", headers: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
@@ -91,6 +109,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
         UniTask.ToCoroutine(async () =>
         {
             Client.AddHeader(Header_Auth, Value_Auth);
+            Client.AddHeader(Header_ReqId,
+                Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
             await TestRequestHeaders(
                 Client.DeleteAsync<string>(MockServer.ServerUrl + "api/v1/headers", headers: OneOffHeaders),
                 Encoding.UTF8.GetBytes("Hello"));
@@ -100,6 +120,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator GetSpriteAsync_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
             Client.GetSpriteAsync(MockServer.ServerUrl + "api/v1/headers.png", headers: OneOffHeaders), RealPngBytes);
     });
@@ -109,6 +131,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
         UniTask.ToCoroutine(async () =>
         {
             Client.AddHeader(Header_Auth, Value_Auth);
+            Client.AddHeader(Header_ReqId,
+                Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
             await TestRequestHeaders(
                 Client.GetCachedSpriteAsync(MockServer.ServerUrl + "api/v1/headers.png", headers: OneOffHeaders),
                 RealPngBytes);
@@ -118,6 +142,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
     public IEnumerator GetAudioClipAsync_MergesPersistentAndCustomHeadersCorrectly() => UniTask.ToCoroutine(async () =>
     {
         Client.AddHeader(Header_Auth, Value_Auth);
+        Client.AddHeader(Header_ReqId,
+            Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
             Client.GetAudioClipAsync(MockServer.ServerUrl + "api/v1/headers.mp3", headers: OneOffHeaders),
             RealMp3Bytes);
@@ -128,6 +154,8 @@ public class ApiClientHeadersTest : ApiClientTestBase
         UniTask.ToCoroutine(async () =>
         {
             Client.AddHeader(Header_Auth, Value_Auth);
+            Client.AddHeader(Header_ReqId,
+                Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
             await TestRequestHeaders(
                 Client.GetCachedAudioClipAsync(MockServer.ServerUrl + "api/v1/headers.mp3", headers: OneOffHeaders),
                 RealMp3Bytes);
@@ -139,6 +167,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
     private const string Value_Auth = "Bearer my-token";
     private const string Header_ReqId = "X-Request-Id";
     private const string Value_ReqId = "0123456789";
+    private const string Value_ReqId_Persistent = "PersistentId";
 
     private static Dictionary<string, string> OneOffHeaders =>
         new() { { Header_ReqId, Value_ReqId } }; // OneOff Headers
