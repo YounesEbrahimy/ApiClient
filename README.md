@@ -1,5 +1,5 @@
 # 🌐 ApiClient
-
+![Unity Tests](https://github.com/YounesEbrahimy/ApiClient/actions/workflows/test.yml/badge.svg)
 <table>
   <tr>
     <td width=125>
