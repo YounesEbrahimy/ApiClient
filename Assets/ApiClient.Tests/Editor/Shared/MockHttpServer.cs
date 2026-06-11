@@ -20,7 +20,7 @@ public class MockHttpServer : IDisposable
 
     public MockHttpServer(int port = 8080)
     {
-        ServerUrl = $"http://localhost:{port}/";
+        ServerUrl = $"http://127.0.0.1:{port}/";
         _listener = new HttpListener();
         _listener.Prefixes.Add(ServerUrl);
     }
