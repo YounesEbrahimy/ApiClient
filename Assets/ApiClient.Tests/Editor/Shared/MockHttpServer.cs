@@ -18,7 +18,7 @@ public class MockHttpServer : IDisposable
     public int DelayMilliseconds { get; set; } = 0;
     public Action<HttpListenerRequest> OnRequestReceived { get; set; }
 
-    public MockHttpServer(int port = 8080)
+    public MockHttpServer(int port)
     {
         ServerUrl = $"http://127.0.0.1:{port}/";
         _listener = new HttpListener();
