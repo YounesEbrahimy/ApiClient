@@ -38,7 +38,7 @@ public class ApiClientTestBase
     public virtual void Setup()
     {
         // 1. Spin up the local server
-        MockServer = new MockHttpServer(8080);
+        MockServer = new MockHttpServer();
         MockServer.Start();
 
         // 2. Initialize the client pointed at our mock server

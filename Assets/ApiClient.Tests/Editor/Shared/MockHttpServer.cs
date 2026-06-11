@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System.Text;
 using System.Net;
 using System;
+using System.Net.Sockets;
 
 public class MockHttpServer : IDisposable
 {
@@ -18,11 +19,20 @@ public class MockHttpServer : IDisposable
     public int DelayMilliseconds { get; set; } = 0;
     public Action<HttpListenerRequest> OnRequestReceived { get; set; }
 
-    public MockHttpServer(int port)
+    public MockHttpServer()
     {
-        ServerUrl = $"http://127.0.0.1:{port}/";
+        ServerUrl = $"http://127.0.0.1:{GetFreePort()}/";
         _listener = new HttpListener();
         _listener.Prefixes.Add(ServerUrl);
+    }
+
+    private static int GetFreePort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return port;
     }
 
     public void Start()
