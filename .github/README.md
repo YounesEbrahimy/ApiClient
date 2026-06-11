@@ -3,7 +3,7 @@
 <table>
   <tr>
     <td width=125>
-      <img src=".github/images/logo.png" alt="Logo">
+      <img src="images/logo.png" alt="Logo">
     </td>
     <td valign="middle">
       <p>A lightweight, async HTTP client for Unity built on top of `UnityWebRequest` and <a href="https://github.com/Cysharp/UniTask">UniTask</a>. It handles JSON REST requests, image and audio asset downloads, and persistent disk caching — all without blocking the main thread.</p>
