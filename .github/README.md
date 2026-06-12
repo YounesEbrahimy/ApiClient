@@ -1,12 +1,19 @@
 # 🌐 ApiClient
+<div align=center>
+
 ![Unity Tests](https://github.com/YounesEbrahimy/ApiClient/actions/workflows/test.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](https://opensource.org/licenses/MIT)
+[![Releases](https://img.shields.io/github/release/younesebrahimy/apiclient.svg)](https://github.com/YounesEbrahimy/ApiClient/releases)
+[![Unity](https://img.shields.io/badge/Unity-6000.3+-yellow.svg)](https://unity3d.com/pt/get-unity/download/archive)
+
+</div>
 <table>
   <tr>
     <td width=125>
       <img src="images/logo.png" alt="Logo">
     </td>
     <td valign="middle">
-      <p>A lightweight, async HTTP client for Unity built on top of `UnityWebRequest` and <a href="https://github.com/Cysharp/UniTask">UniTask</a>. It handles JSON REST requests, image and audio asset downloads, and persistent disk caching — all without blocking the main thread.</p>
+      <p>A lightweight, async HTTP client for Unity built on top of <strong><ins>UnityWebRequest</ins></strong> and <a href="https://github.com/Cysharp/UniTask">UniTask</a>. It handles JSON REST requests, image and audio asset downloads, and persistent disk caching — all without blocking the main thread.</p>
     </td>
   </tr>
 </table>
@@ -39,7 +46,7 @@
 ### Via Unity Package Manager (Git URL)
 
 1. Open **Window → Package Manager**
-2. Click the **+** button → **Add package from git URL...**
+2. Click the **+** button → **Add package from git URL ...**
 3. Enter:
    ```
    https://github.com/YounesEbrahimy/ApiClient.git?path=/Assets/ApiClient/#1.0.0
@@ -47,7 +54,7 @@
 
 ### Manual
 
-Download the latest .unitypackage file form Releases, And import it in your project.
+Download the latest .unitypackage file form [Releases](https://github.com/YounesEbrahimy/ApiClient/releases), And import it in your project.
 
 > Make sure UniTask and Newtonsoft.Json are already installed before importing.
 
