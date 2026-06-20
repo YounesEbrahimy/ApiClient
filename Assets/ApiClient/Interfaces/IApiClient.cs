@@ -86,6 +86,14 @@ namespace ApiClientLib
         /// </summary>
         void ClearHeaders();
 
+        // ── Cache Control ─────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Deletes the cache folder and its contents, and resets the indexes.
+        /// </summary>
+        /// <param name="ct">Token used to cancel the operation.</param>
+        UniTask InvalidateCacheAsync(CancellationToken ct);
+
         // ── GET ───────────────────────────────────────────────────────────────────
 
         /// <summary>

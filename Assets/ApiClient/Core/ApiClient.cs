@@ -66,6 +66,52 @@ namespace ApiClientLib
         public void RemoveHeader(string key) => _persistentHeaders.Remove(key);
         public void ClearHeaders() => _persistentHeaders.Clear();
 
+        // ── Cache Control ─────────────────────────────────────────────────────────
+
+        public async UniTask InvalidateCacheAsync(CancellationToken ct = default)
+        {
+            var heldFileLocks = new List<SemaphoreSlim>();
+
+            try
+            {
+                bool acquiredNew;
+                do
+                {
+                    acquiredNew = false;
+                    foreach (var fileLock in _fileLocks.Values)
+                    {
+                        if (heldFileLocks.Contains(fileLock)) continue;
+                        await fileLock.WaitAsync(ct);
+                        heldFileLocks.Add(fileLock);
+                        acquiredNew = true;
+                    }
+                } while (acquiredNew);
+
+                await _globalCacheLock.WaitAsync(ct);
+                try
+                {
+                    await UniTask.RunOnThreadPool(() =>
+                    {
+                        if (Directory.Exists(_cacheDir))
+                            Directory.Delete(_cacheDir, recursive: true);
+
+                        Directory.CreateDirectory(_cacheDir);
+                    }, cancellationToken: ct);
+
+                    _cacheIndex = new Dictionary<string, CacheEntry>();
+                }
+                finally
+                {
+                    _globalCacheLock.Release();
+                }
+            }
+            finally
+            {
+                foreach (var fileLock in heldFileLocks)
+                    fileLock.Release();
+            }
+        }
+
         // ── GET Methods ───────────────────────────────────────────────────────────
 
         public async UniTask GetAsync(string url, Dictionary<string, string> headers = null,

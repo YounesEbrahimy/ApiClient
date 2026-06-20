@@ -1,9 +1,9 @@
 using System.Threading.Tasks;
+using System.Net.Sockets;
 using Newtonsoft.Json;
 using System.Text;
 using System.Net;
 using System;
-using System.Net.Sockets;
 
 public class MockHttpServer : IDisposable
 {
