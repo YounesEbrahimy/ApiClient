@@ -398,7 +398,7 @@ public class ApiClientResponseTests : ApiClientTestBase
             try
             {
                 // Act
-                _ = await Client.GetCachedSpriteAsync(url);
+                _ = await Client.GetCachedSpriteAsync(url, urlType: UrlType.Absolute);
 
                 var key = ApiClient.ComputeHash(url);
                 var filePath = Path.Combine(Client._cacheDir, $"{key}.png");
@@ -465,7 +465,7 @@ public class ApiClientResponseTests : ApiClientTestBase
             try
             {
                 // Act
-                _ = await Client.GetCachedAudioClipAsync(url);
+                _ = await Client.GetCachedAudioClipAsync(url, urlType: UrlType.Absolute);
 
                 var key = ApiClient.ComputeHash(url);
                 var filePath = Path.Combine(Client._cacheDir, $"{key}.mp3");
