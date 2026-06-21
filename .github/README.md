@@ -49,7 +49,7 @@
 2. Click the **+** button → **Add package from git URL ...**
 3. Enter:
    ```
-   https://github.com/YounesEbrahimy/ApiClient.git?path=/Assets/ApiClient/#1.0.2
+   https://github.com/YounesEbrahimy/ApiClient.git?path=/Assets/ApiClient/#1.1.0
    ```
 
 ### Manual
