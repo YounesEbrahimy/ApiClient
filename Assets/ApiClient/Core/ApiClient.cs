@@ -115,100 +115,107 @@ namespace ApiClientLib
         // ── GET Methods ───────────────────────────────────────────────────────────
 
         public async UniTask GetAsync(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req =
-                await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbGET, null, headers, queryParams, timeout,
-                    ct);
+            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbGET, null, headers, queryParams,
+                urlType, timeout, ct);
         }
 
         public async UniTask<T> GetAsync<T>(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req =
-                await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbGET, null, headers, queryParams, timeout,
-                    ct);
+            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbGET, null, headers, queryParams,
+                urlType, timeout, ct);
             return ProcessResponse<T>(req);
         }
 
         // ── POST Methods ──────────────────────────────────────────────────────────
 
         public async UniTask PostAsync(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req =
-                await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPOST, body, headers, queryParams, timeout,
-                    ct);
+            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPOST, body, headers,
+                queryParams, urlType, timeout, ct);
         }
 
         public async UniTask<T> PostAsync<T>(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req =
-                await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPOST, body, headers, queryParams, timeout,
-                    ct);
+            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPOST, body, headers,
+                queryParams, urlType, timeout, ct);
             return ProcessResponse<T>(req);
         }
 
         // ── PUT Methods ───────────────────────────────────────────────────────────
 
         public async UniTask PutAsync(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req =
-                await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPUT, body, headers, queryParams, timeout,
-                    ct);
+            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPUT, body, headers, queryParams,
+                urlType, timeout, ct);
         }
 
         public async UniTask<T> PutAsync<T>(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req =
-                await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPUT, body, headers, queryParams, timeout,
-                    ct);
+            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPUT, body, headers, queryParams,
+                urlType, timeout, ct);
             return ProcessResponse<T>(req);
         }
 
         // ── PATCH Methods ─────────────────────────────────────────────────────────
 
         public async UniTask PatchAsync(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req = await SendJsonWebRequestAsync(url, "PATCH", body, headers, queryParams, timeout, ct);
+            using var req =
+                await SendJsonWebRequestAsync(url, "PATCH", body, headers, queryParams, urlType, timeout, ct);
         }
 
         public async UniTask<T> PatchAsync<T>(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req = await SendJsonWebRequestAsync(url, "PATCH", body, headers, queryParams, timeout, ct);
+            using var req =
+                await SendJsonWebRequestAsync(url, "PATCH", body, headers, queryParams, urlType, timeout, ct);
             return ProcessResponse<T>(req);
         }
 
         // ── DELETE Methods ────────────────────────────────────────────────────────
 
         public async UniTask DeleteAsync(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req =
-                await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbDELETE, null, headers, queryParams, timeout,
-                    ct);
+            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbDELETE, null, headers,
+                queryParams, urlType, timeout, ct);
         }
 
         public async UniTask<T> DeleteAsync<T>(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req =
-                await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbDELETE, null, headers, queryParams, timeout,
-                    ct);
+            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbDELETE, null, headers,
+                queryParams, urlType, timeout, ct);
             return ProcessResponse<T>(req);
         }
 
         // ── Sprite Methods ────────────────────────────────────────────────────────
 
         public async UniTask<Sprite> GetSpriteAsync(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
-            using var req = UnityWebRequestTexture.GetTexture(url);
+            using var req = UnityWebRequestTexture.GetTexture(
+                urlType == UrlType.Relative ? CombineUrl(url) : url
+            );
             ApplyRequestProperties(req, _persistentHeaders, headers, queryParams, timeout);
 
             try
@@ -243,17 +250,17 @@ namespace ApiClientLib
         }
 
         public UniTask<Sprite> GetCachedSpriteAsync(string url, int cacheDays = 14,
-            Dictionary<string, string> headers = null, Dictionary<string, string> queryParams = null, int timeout = 10,
-            CancellationToken ct = default)
+            Dictionary<string, string> headers = null, Dictionary<string, string> queryParams = null,
+            UrlType urlType = UrlType.Relative, int timeout = 10, CancellationToken ct = default)
         {
             Sprite downloadedSprite = null;
 
             return GetCachedAssetAsync(
-                url,
+                urlType == UrlType.Relative ? CombineUrl(url) : url,
                 fileExtension: "png",
                 downloadToBytes: async token =>
                 {
-                    downloadedSprite = await GetSpriteAsync(url, headers, queryParams, timeout, token);
+                    downloadedSprite = await GetSpriteAsync(url, headers, queryParams, urlType, timeout, token);
                     return downloadedSprite.texture.EncodeToPNG();
                 },
                 deserializeFromPath: async (path, token) =>
@@ -270,11 +277,14 @@ namespace ApiClientLib
         // ── AudioClip Methods ─────────────────────────────────────────────────────
 
         public async UniTask<AudioClip> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
-            Dictionary<string, string> headers = null, Dictionary<string, string> queryParams = null, int timeout = 10,
-            CancellationToken ct = default)
+            Dictionary<string, string> headers = null, Dictionary<string, string> queryParams = null,
+            UrlType urlType = UrlType.Relative, int timeout = 10, CancellationToken ct = default)
         {
             var resolvedType = audioType == AudioType.UNKNOWN ? DetectAudioType(url) : audioType;
-            using var req = UnityWebRequestMultimedia.GetAudioClip(url, resolvedType);
+            using var req = UnityWebRequestMultimedia.GetAudioClip(
+                urlType == UrlType.Relative ? CombineUrl(url) : url,
+                resolvedType
+            );
             ApplyRequestProperties(req, _persistentHeaders, headers, queryParams, timeout);
 
             try
@@ -317,7 +327,8 @@ namespace ApiClientLib
 
         public UniTask<AudioClip> GetCachedAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
             int cacheDays = 14, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, int timeout = 10, CancellationToken ct = default)
+            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
+            CancellationToken ct = default)
         {
             var ext = GetUrlFileExtension(url);
             if (ext == null)
@@ -325,13 +336,14 @@ namespace ApiClientLib
                     "When Requesting for an AudioClip url, url must contain file extension.");
 
             var resolvedType = audioType == AudioType.UNKNOWN ? DetectAudioType(url) : audioType;
+            var finalUrl = urlType == UrlType.Relative ? CombineUrl(url) : url;
 
             return GetCachedAssetAsync(
-                url,
+                finalUrl,
                 fileExtension: ext,
                 downloadToBytes: async token =>
                 {
-                    using var req = UnityWebRequest.Get(url);
+                    using var req = UnityWebRequest.Get(finalUrl);
                     ApplyRequestProperties(req, _persistentHeaders, headers, queryParams, timeout);
                     try
                     {
@@ -345,8 +357,7 @@ namespace ApiClientLib
 
                     return req.downloadHandler.data;
                 },
-                deserializeFromPath: (path, token) =>
-                    LoadAudioClipFromPathAsync(path, resolvedType, token),
+                deserializeFromPath: (path, token) => LoadAudioClipFromPathAsync(path, resolvedType, token),
                 cacheDays, ct);
         }
 
@@ -371,10 +382,14 @@ namespace ApiClientLib
         }
 
         private async UniTask<UnityWebRequest> SendJsonWebRequestAsync(string url, string method, object body,
-            Dictionary<string, string> headers, Dictionary<string, string> queryParams, int timeout,
+            Dictionary<string, string> headers, Dictionary<string, string> queryParams, UrlType urlType, int timeout,
             CancellationToken ct)
         {
-            var req = CreateJsonWebRequest(CombineUrl(url), body, method);
+            var req = CreateJsonWebRequest(
+                urlType == UrlType.Relative ? CombineUrl(url) : url,
+                body,
+                method
+            );
             ApplyRequestProperties(req, _persistentHeaders, headers, queryParams, timeout);
 
             try
