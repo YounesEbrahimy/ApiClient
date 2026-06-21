@@ -49,7 +49,7 @@
 2. Click the **+** button → **Add package from git URL ...**
 3. Enter:
    ```
-   https://github.com/YounesEbrahimy/ApiClient.git?path=/Assets/ApiClient/#1.0.0
+   https://github.com/YounesEbrahimy/ApiClient.git?path=/Assets/ApiClient/#1.0.2
    ```
 
 ### Manual
@@ -104,7 +104,7 @@ client.SetBaseUrl("https://api.example.com/v2");
 Console.WriteLine(client.BaseUrl); // "https://api.example.com/v2/"
 ```
 
-> **URL Resolution:** When a `BaseUrl` is set, the `url` parameter on every request method is treated as a relative path and appended to it. When `BaseUrl` is empty, every `url` parameter must be a fully-qualified `http://` or `https://` address. An `InvalidUrlException` is thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.
+> **URL Resolution:** Every request method accepts a `urlType` parameter (`UrlType.Relative` by default). When `urlType` is `UrlType.Relative`, the `url` parameter is treated as a relative path and appended to `BaseUrl`. When `urlType` is `UrlType.Absolute`, `BaseUrl` is ignored and `url` is used as-is, so it must be a fully-qualified `http://` or `https://` address. An `InvalidUrlException` is thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.
 
 ---
 
@@ -144,6 +144,18 @@ client.ClearHeaders();
 
 ---
 
+### Cache Control
+
+#### `UniTask InvalidateCacheAsync(CancellationToken ct = default)`
+
+Deletes the entire disk cache directory and its contents, then recreates it and resets the cache index. Use this to force fresh downloads for `GetCachedSpriteAsync` and `GetCachedAudioClipAsync` regardless of `cacheDays`. Safe to call while other cached requests are in flight — it waits for in-progress cache reads/writes to finish before clearing.
+
+```csharp
+await client.InvalidateCacheAsync();
+```
+
+---
+
 ### HTTP Methods
 
 All HTTP methods share these common parameters:
@@ -153,6 +165,7 @@ All HTTP methods share these common parameters:
 | `url` | `string` | — | Relative or absolute endpoint URL |
 | `headers` | `Dictionary<string, string>` | `null` | Per-request headers, merged over persistent headers |
 | `queryParams` | `Dictionary<string, string>` | `null` | Key-value pairs appended to the URL as a query string |
+| `urlType` | `UrlType` | `UrlType.Relative` | Whether `url` is appended to `BaseUrl` (`Relative`) or used as-is (`Absolute`) |
 | `timeout` | `int` | `10` | Request timeout in seconds |
 | `ct` | `CancellationToken` | `default` | Token to cancel the request |
 
@@ -406,4 +419,4 @@ catch (OperationCanceledException)
 
 ## 🛡️ License
 
-[MIT](LICENSE)
+[MIT](../LICENSE)
