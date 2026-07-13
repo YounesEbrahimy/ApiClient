@@ -548,7 +548,7 @@ namespace ApiClientLib
         /// <c>.aac</c> → <see cref="AudioType.ACC"/>,
         /// <c>.wav</c> → <see cref="AudioType.WAV"/>,
         /// <c>.aiff</c> / <c>.aif</c> → <see cref="AudioType.AIFF"/>.
-        /// If the extension is unrecognised, <see cref="AudioType.UNKNOWN"/> is passed to
+        /// If the extension is unrecognized, <see cref="AudioType.UNKNOWN"/> is passed to
         /// <c>UnityWebRequestMultimedia</c>, which may or may not succeed depending on the platform.
         /// </para>
         /// <para>
@@ -587,7 +587,7 @@ namespace ApiClientLib
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The URL <b>must</b> include a recognisable file extension (e.g. <c>.mp3</c>, <c>.wav</c>).
+        /// The URL <b>must</b> include a recognizable file extension (e.g. <c>.mp3</c>, <c>.wav</c>).
         /// The extension is used both to name the cache file on disk and, when
         /// <paramref name="audioType"/> is <see cref="AudioType.UNKNOWN"/>, to determine the audio format.
         /// An <see cref="InvalidUrlException"/> is thrown immediately if no extension can be extracted.
