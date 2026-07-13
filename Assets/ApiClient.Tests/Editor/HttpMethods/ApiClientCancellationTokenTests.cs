@@ -11,11 +11,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator GetAsyncNoBody_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.GetAsync("api/v1/hang", ct: cts.Token),
-                cts
+                x => Client.GetAsync("api/v1/hang", ct: x)
             );
         });
 
@@ -23,11 +21,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator GetAsyncWithBody_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.GetAsync<TestPayload>("api/v1/hang", ct: cts.Token),
-                cts
+                x => Client.GetAsync<TestPayload>("api/v1/hang", ct: x)
             );
         });
 
@@ -35,11 +31,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator PostAsyncNoBody_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.PostAsync("api/v1/hang", string.Empty, ct: cts.Token),
-                cts
+                x => Client.PostAsync("api/v1/hang", string.Empty, ct: x)
             );
         });
 
@@ -47,11 +41,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator PostAsyncWithBody_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.PostAsync<TestPayload>("api/v1/hang", string.Empty, ct: cts.Token),
-                cts
+                x => Client.PostAsync<TestPayload>("api/v1/hang", string.Empty, ct: x)
             );
         });
 
@@ -59,11 +51,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator PutAsyncNoBody_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.PutAsync("api/v1/hang", string.Empty, ct: cts.Token),
-                cts
+                x => Client.PutAsync("api/v1/hang", string.Empty, ct: x)
             );
         });
 
@@ -71,11 +61,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator PutAsyncWithBody_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.PutAsync<TestPayload>("api/v1/hang", string.Empty, ct: cts.Token),
-                cts
+                x => Client.PutAsync<TestPayload>("api/v1/hang", string.Empty, ct: x)
             );
         });
 
@@ -83,11 +71,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator PatchAsyncNoBody_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.PatchAsync("api/v1/hang", string.Empty, ct: cts.Token),
-                cts
+                x => Client.PatchAsync("api/v1/hang", string.Empty, ct: x)
             );
         });
 
@@ -95,11 +81,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator PatchAsyncWithBody_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.PatchAsync<TestPayload>("api/v1/hang", string.Empty, ct: cts.Token),
-                cts
+                x => Client.PatchAsync<TestPayload>("api/v1/hang", string.Empty, ct: x)
             );
         });
 
@@ -107,11 +91,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator DeleteAsyncNoBody_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.DeleteAsync("api/v1/hang", ct: cts.Token),
-                cts
+                x => Client.DeleteAsync("api/v1/hang", ct: x)
             );
         });
 
@@ -119,11 +101,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator DeleteAsyncWithBody_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.DeleteAsync<TestPayload>("api/v1/hang", ct: cts.Token),
-                cts
+                x => Client.DeleteAsync<TestPayload>("api/v1/hang", ct: x)
             );
         });
 
@@ -131,11 +111,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator GetSpriteAsync_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.GetSpriteAsync(MockServer.ServerUrl + "test.png", ct: cts.Token),
-                cts
+                x => Client.GetSpriteAsync("test.png", ct: x)
             );
         });
 
@@ -143,11 +121,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator GetCachedSpriteAsync_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test.png", ct: cts.Token),
-                cts
+                x => Client.GetCachedSpriteAsync("test.png", ct: x)
             );
         });
 
@@ -155,11 +131,9 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator GetAudioClipAsync_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.GetAudioClipAsync(MockServer.ServerUrl + "test.mp3", ct: cts.Token),
-                cts
+                x => Client.GetAudioClipAsync("test.mp3", ct: x)
             );
         });
 
@@ -167,21 +141,20 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
     public IEnumerator GetCachedAudioClipAsync_WhenCancelledViaToken_ThrowsOperationCanceledException() =>
         UniTask.ToCoroutine(async () =>
         {
-            var cts = new CancellationTokenSource();
             await TestRequestCancellation(
                 MockServer,
-                Client.GetCachedAudioClipAsync(MockServer.ServerUrl + "test.mp3", ct: cts.Token),
-                cts
+                x => Client.GetCachedAudioClipAsync("test.mp3", ct: x)
             );
         });
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static async UniTask TestRequestCancellation(MockHttpServer server, UniTask requestTask,
-        CancellationTokenSource cts)
+    private static async UniTask TestRequestCancellation(MockHttpServer server,
+        Func<CancellationToken, UniTask> requestFunc)
     {
         // Arrange
         server.DelayMilliseconds = 2000; // Force server to hang for 2 seconds
+        var cts = new CancellationTokenSource();
 
         // Cancel the token after 50ms
         cts.CancelAfter(50);
@@ -189,7 +162,7 @@ public class ApiClientCancellationTokenTests : ApiClientTestBase
         // Act & Assert
         try
         {
-            await requestTask;
+            await requestFunc(cts.Token);
             Assert.Fail("Expected OperationCanceledException, but the request completed.");
         }
         catch (OperationCanceledException)

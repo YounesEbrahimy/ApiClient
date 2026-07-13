@@ -1,3 +1,4 @@
+using ApiClientLib.Helpers;
 using NUnit.Framework;
 using ApiClientLib;
 using System;
@@ -72,6 +73,7 @@ public class ApiClientBaseUrlTests : ApiClientTestBase
 
         // Assert
         var finalUrl = client.BaseUrl + relativeUrl;
-        Assert.AreEqual(finalUrl, client.CombineUrl(relativeUrl), "BaseUrl and RelativeUrl should append correctly.");
+        Assert.AreEqual(finalUrl, UrlValidation.CombineAndValidateUrl(relativeUrl, UrlType.Relative, client.BaseUrl),
+            "BaseUrl and RelativeUrl should append correctly.");
     }
 }

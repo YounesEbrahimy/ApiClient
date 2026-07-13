@@ -4,6 +4,7 @@ using UnityEngine.Assertions;
 using UnityEngine.TestTools;
 using System.Collections;
 using System.Text;
+using System;
 
 public class ApiClientHeadersTest : ApiClientTestBase
 {
@@ -13,7 +14,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_Auth, Value_Auth);
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
-        await TestRequestHeaders(Client.GetAsync(MockServer.ServerUrl + "api/v1/headers", headers: OneOffHeaders),
+        await TestRequestHeaders(() => Client.GetAsync("api/v1/headers", customHeaders: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
 
@@ -24,7 +25,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
-            Client.GetAsync<string>(MockServer.ServerUrl + "api/v1/headers", headers: OneOffHeaders),
+            () => Client.GetAsync<string>("api/v1/headers", customHeaders: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
 
@@ -35,7 +36,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
-            Client.PostAsync(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
+            () => Client.PostAsync("api/v1/headers", string.Empty, customHeaders: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
 
@@ -46,7 +47,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
-            Client.PostAsync<string>(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
+            () => Client.PostAsync<string>("api/v1/headers", string.Empty, customHeaders: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
 
@@ -57,7 +58,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
-            Client.PutAsync(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
+            () => Client.PutAsync("api/v1/headers", string.Empty, customHeaders: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
 
@@ -68,7 +69,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
-            Client.PutAsync<string>(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
+            () => Client.PutAsync<string>("api/v1/headers", string.Empty, customHeaders: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
 
@@ -79,7 +80,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
-            Client.PatchAsync(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
+            () => Client.PatchAsync("api/v1/headers", string.Empty, customHeaders: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
 
@@ -90,7 +91,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
-            Client.PatchAsync<string>(MockServer.ServerUrl + "api/v1/headers", string.Empty, headers: OneOffHeaders),
+            () => Client.PatchAsync<string>("api/v1/headers", string.Empty, customHeaders: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
 
@@ -100,7 +101,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_Auth, Value_Auth);
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
-        await TestRequestHeaders(Client.DeleteAsync(MockServer.ServerUrl + "api/v1/headers", headers: OneOffHeaders),
+        await TestRequestHeaders(() => Client.DeleteAsync("api/v1/headers", customHeaders: OneOffHeaders),
             Encoding.UTF8.GetBytes("Hello"));
     });
 
@@ -112,7 +113,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
             Client.AddHeader(Header_ReqId,
                 Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
             await TestRequestHeaders(
-                Client.DeleteAsync<string>(MockServer.ServerUrl + "api/v1/headers", headers: OneOffHeaders),
+                () => Client.DeleteAsync<string>("api/v1/headers", customHeaders: OneOffHeaders),
                 Encoding.UTF8.GetBytes("Hello"));
         });
 
@@ -123,7 +124,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
-            Client.GetSpriteAsync(MockServer.ServerUrl + "api/v1/headers.png", headers: OneOffHeaders), RealPngBytes);
+            () => Client.GetSpriteAsync("api/v1/headers.png", customHeaders: OneOffHeaders), RealPngBytes);
     });
 
     [UnityTest]
@@ -134,7 +135,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
             Client.AddHeader(Header_ReqId,
                 Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
             await TestRequestHeaders(
-                Client.GetCachedSpriteAsync(MockServer.ServerUrl + "api/v1/headers.png", headers: OneOffHeaders),
+                () => Client.GetCachedSpriteAsync("api/v1/headers.png", customHeaders: OneOffHeaders),
                 RealPngBytes);
         });
 
@@ -145,7 +146,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         Client.AddHeader(Header_ReqId,
             Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
         await TestRequestHeaders(
-            Client.GetAudioClipAsync(MockServer.ServerUrl + "api/v1/headers.mp3", headers: OneOffHeaders),
+            () => Client.GetAudioClipAsync("api/v1/headers.mp3", customHeaders: OneOffHeaders),
             RealMp3Bytes);
     });
 
@@ -157,7 +158,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
             Client.AddHeader(Header_ReqId,
                 Value_ReqId_Persistent); // OneOff headers must take priority over persistent headers.
             await TestRequestHeaders(
-                Client.GetCachedAudioClipAsync(MockServer.ServerUrl + "api/v1/headers.mp3", headers: OneOffHeaders),
+                () => Client.GetCachedAudioClipAsync("api/v1/headers.mp3", customHeaders: OneOffHeaders),
                 RealMp3Bytes);
         });
 
@@ -172,7 +173,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
     private static Dictionary<string, string> OneOffHeaders =>
         new() { { Header_ReqId, Value_ReqId } }; // OneOff Headers
 
-    private async UniTask TestRequestHeaders(UniTask task, byte[] responseBytes)
+    private async UniTask TestRequestHeaders(Func<UniTask> requestFunc, byte[] responseBytes)
     {
         // Arrange
         var spyHookTriggered = false;
@@ -188,7 +189,7 @@ public class ApiClientHeadersTest : ApiClientTestBase
         MockServer.ResponseBytes = responseBytes;
 
         // Act
-        await task;
+        await requestFunc();
 
         // Assert
         Assert.IsTrue(spyHookTriggered, "The MockServer spy hook was never triggered.");

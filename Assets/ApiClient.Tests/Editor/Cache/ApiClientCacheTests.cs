@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine.TestTools;
+using ApiClientLib.Helpers;
 using System.Collections;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using ApiClientLib;
-using UnityEngine;
 using System.IO;
 using System;
 
@@ -23,10 +23,10 @@ public class ApiClientCacheTests : ApiClientTestBase
         MockServer.OnRequestReceived = _ => callCounter++;
 
         // Act: Fire 5 simultaneous requests for the same URL
-        var tasks = new List<UniTask<Sprite>>();
+        var tasks = new List<UniTask<SpriteResponse>>();
         for (var i = 0; i < requestCount; i++)
         {
-            tasks.Add(Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test.png"));
+            tasks.Add(Client.GetCachedSpriteAsync("test.png"));
         }
 
         await UniTask.WhenAll(tasks);
@@ -35,7 +35,7 @@ public class ApiClientCacheTests : ApiClientTestBase
         Assert.AreEqual(1, callCounter, "The server should only have been hit once due to caching/locking.");
 
         // Ensure files exist on disk
-        var cacheDir = Client._cacheDir;
+        var cacheDir = Client.CacheDirectoryPath();
         Assert.IsTrue(Directory.GetFiles(cacheDir, "*.png").Length == 1, "Cache file was not saved to disk.");
     });
 
@@ -45,17 +45,17 @@ public class ApiClientCacheTests : ApiClientTestBase
         // 1. First fetch to populate cache
         MockServer.ResponseStatusCode = 200;
         MockServer.ResponseBytes = RealPngBytes;
-        await Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test.png");
+        await Client.GetCachedSpriteAsync("test.png");
 
         // 2. Manually corrupt/delete the cache folder
-        var cacheDir = Client._cacheDir;
+        var cacheDir = Client.CacheDirectoryPath();
         var files = Directory.GetFiles(cacheDir, "*.png");
         File.Delete(files[0]);
 
         // 3. Second fetch
         var callCounter = 0;
         MockServer.OnRequestReceived = _ => callCounter++;
-        await Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test.png");
+        await Client.GetCachedSpriteAsync("test.png");
 
         // Assert: It should have noticed the missing file and re-fetched
         Assert.AreEqual(1, callCounter, "The client should have re-fetched the file because the cache was missing.");
@@ -66,15 +66,15 @@ public class ApiClientCacheTests : ApiClientTestBase
     {
         // Arrange
         var url = MockServer.ServerUrl + "expired.png";
-        var key = ApiClient.ComputeHash(url);
+        var key = CachedRequestHandling.ComputeHash(url);
 
         // Manually inject an expired cache index entry (15 days old, with a 14-day lifespan)
-        Directory.CreateDirectory(Client._cacheDir);
+        Directory.CreateDirectory(Client.CacheDirectoryPath());
         var expiredEntry = new CacheEntry { Url = url, CachedAt = DateTime.UtcNow.AddDays(-15) };
         var index = new Dictionary<string, CacheEntry> { { key, expiredEntry } };
 
-        await File.WriteAllTextAsync(Client._cacheIndexPath, JsonConvert.SerializeObject(index));
-        await File.WriteAllBytesAsync(Path.Combine(Client._cacheDir, $"{key}.png"), RealPngBytes);
+        await File.WriteAllTextAsync(Client.CacheIndexPath(), JsonConvert.SerializeObject(index));
+        await File.WriteAllBytesAsync(Path.Combine(Client.CacheDirectoryPath(), $"{key}.png"), RealPngBytes);
 
         var callCounter = 0;
         MockServer.ResponseStatusCode = 200;
@@ -82,7 +82,7 @@ public class ApiClientCacheTests : ApiClientTestBase
         MockServer.OnRequestReceived = _ => callCounter++;
 
         // Act
-        await Client.GetCachedSpriteAsync(url, cacheDays: 14);
+        await Client.GetCachedSpriteAsync(url, cacheDays: 14, urlType: UrlType.Absolute);
 
         // Assert
         Assert.AreEqual(1, callCounter, "Should hit the server because the local cache entry has expired.");
@@ -92,7 +92,7 @@ public class ApiClientCacheTests : ApiClientTestBase
     public IEnumerator GetCachedSpriteAsync_WithZeroCacheDays_AlwaysReFetches() => UniTask.ToCoroutine(async () =>
     {
         // Arrange
-        var url = MockServer.ServerUrl + "always-fresh.png";
+        const string url = "always-fresh.png";
         MockServer.ResponseStatusCode = 200;
         MockServer.ResponseBytes = RealPngBytes;
 
@@ -119,10 +119,10 @@ public class ApiClientCacheTests : ApiClientTestBase
         MockServer.OnRequestReceived = _ => callCounter++;
 
         // Act: Fire 5 simultaneous requests for the same URL
-        var tasks = new List<UniTask<AudioClip>>();
+        var tasks = new List<UniTask<AudioClipResponse>>();
         for (var i = 0; i < requestCount; i++)
         {
-            tasks.Add(Client.GetCachedAudioClipAsync(MockServer.ServerUrl + "test.mp3"));
+            tasks.Add(Client.GetCachedAudioClipAsync("test.mp3"));
         }
 
         await UniTask.WhenAll(tasks);
@@ -131,7 +131,7 @@ public class ApiClientCacheTests : ApiClientTestBase
         Assert.AreEqual(1, callCounter, "The server should only have been hit once due to caching/locking.");
 
         // Ensure files exist on disk
-        var cacheDir = Client._cacheDir;
+        var cacheDir = Client.CacheDirectoryPath();
         Assert.IsTrue(Directory.GetFiles(cacheDir, "*.mp3").Length == 1, "Cache file was not saved to disk.");
     });
 
@@ -141,17 +141,17 @@ public class ApiClientCacheTests : ApiClientTestBase
         // 1. First fetch to populate cache
         MockServer.ResponseStatusCode = 200;
         MockServer.ResponseBytes = RealMp3Bytes;
-        await Client.GetCachedAudioClipAsync(MockServer.ServerUrl + "test.mp3");
+        await Client.GetCachedAudioClipAsync("test.mp3");
 
         // 2. Manually corrupt/delete the cache folder
-        var cacheDir = Client._cacheDir;
+        var cacheDir = Client.CacheDirectoryPath();
         var files = Directory.GetFiles(cacheDir, "*.mp3");
         File.Delete(files[0]);
 
         // 3. Second fetch
         var callCounter = 0;
         MockServer.OnRequestReceived = _ => callCounter++;
-        await Client.GetCachedAudioClipAsync(MockServer.ServerUrl + "test.mp3");
+        await Client.GetCachedAudioClipAsync("test.mp3");
 
         // Assert: It should have noticed the missing file and re-fetched
         Assert.AreEqual(1, callCounter, "The client should have re-fetched the file because the cache was missing.");
@@ -163,15 +163,15 @@ public class ApiClientCacheTests : ApiClientTestBase
         {
             // Arrange
             var url = MockServer.ServerUrl + "expired.mp3";
-            var key = ApiClient.ComputeHash(url);
+            var key = CachedRequestHandling.ComputeHash(url);
 
             // Manually inject an expired cache index entry (15 days old, with a 14-day lifespan)
-            Directory.CreateDirectory(Client._cacheDir);
+            Directory.CreateDirectory(Client.CacheDirectoryPath());
             var expiredEntry = new CacheEntry { Url = url, CachedAt = DateTime.UtcNow.AddDays(-15) };
             var index = new Dictionary<string, CacheEntry> { { key, expiredEntry } };
 
-            await File.WriteAllTextAsync(Client._cacheIndexPath, JsonConvert.SerializeObject(index));
-            await File.WriteAllBytesAsync(Path.Combine(Client._cacheDir, $"{key}.mp3"), RealMp3Bytes);
+            await File.WriteAllTextAsync(Client.CacheIndexPath(), JsonConvert.SerializeObject(index));
+            await File.WriteAllBytesAsync(Path.Combine(Client.CacheDirectoryPath(), $"{key}.mp3"), RealMp3Bytes);
 
             var callCounter = 0;
             MockServer.ResponseStatusCode = 200;
@@ -179,7 +179,7 @@ public class ApiClientCacheTests : ApiClientTestBase
             MockServer.OnRequestReceived = _ => callCounter++;
 
             // Act
-            await Client.GetCachedAudioClipAsync(url, cacheDays: 14);
+            await Client.GetCachedAudioClipAsync(url, cacheDays: 14, urlType: UrlType.Absolute);
 
             // Assert
             Assert.AreEqual(1, callCounter, "Should hit the server because the local cache entry has expired.");
@@ -189,7 +189,7 @@ public class ApiClientCacheTests : ApiClientTestBase
     public IEnumerator GetCachedAudioClipAsync_WithZeroCacheDays_AlwaysReFetches() => UniTask.ToCoroutine(async () =>
     {
         // Arrange
-        var url = MockServer.ServerUrl + "always-fresh.mp3";
+        const string url = "always-fresh.mp3";
         MockServer.ResponseStatusCode = 200;
         MockServer.ResponseBytes = RealMp3Bytes;
 

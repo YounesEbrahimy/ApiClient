@@ -5,6 +5,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Threading;
 using NUnit.Framework;
+using ApiClientLib;
 using UnityEngine;
 using System.IO;
 using System;
@@ -15,31 +16,31 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
     public IEnumerator InvalidateCacheAsync_DeletesExistingCacheFiles() => UniTask.ToCoroutine(async () =>
     {
         // Arrange
-        var requestCount = 5;
+        const int requestCount = 5;
         MockServer.ResponseStatusCode = 200;
         MockServer.ResponseBytes = RealPngBytes;
 
         // Act: Cache 5 different Sprites with different URLs
-        var tasks = new List<UniTask<Sprite>>();
+        var tasks = new List<UniTask<SpriteResponse>>();
         for (var i = 0; i < requestCount; i++)
         {
-            tasks.Add(Client.GetCachedSpriteAsync(MockServer.ServerUrl + $"test_[{i}].png"));
+            tasks.Add(Client.GetCachedSpriteAsync($"test_{i}.png"));
         }
 
         await UniTask.WhenAll(tasks);
 
         // Assert: Ensure all files exist on disk
-        Assert.AreEqual(requestCount, Directory.GetFiles(Client._cacheDir, "*.png").Length,
+        Assert.AreEqual(requestCount, Directory.GetFiles(Client.CacheDirectoryPath(), "*.png").Length,
             $"{requestCount} files should have been cached.");
 
         // Act: Invalidate cache
         await Client.InvalidateCacheAsync();
 
         // Assert: Check if cache directory is recreated after deletion
-        Assert.IsTrue(Directory.Exists(Client._cacheDir), "Cache directory should have been recreated.");
+        Assert.IsTrue(Directory.Exists(Client.CacheDirectoryPath()), "Cache directory should have been recreated.");
 
         // Assert: Check if all cache files have been deleted successfully
-        Assert.AreEqual(0, Directory.GetFiles(Client._cacheDir, "*.png").Length,
+        Assert.AreEqual(0, Directory.GetFiles(Client.CacheDirectoryPath(), "*.png").Length,
             "files should have been deleted.");
     });
 
@@ -48,7 +49,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
     {
         // Arrange
         var callCounter = 0;
-        var sameUrl = MockServer.ServerUrl + "test.png";
+        const string sameUrl = "same/test.png";
         MockServer.ResponseStatusCode = 200;
         MockServer.ResponseBytes = RealPngBytes;
         MockServer.OnRequestReceived = _ => callCounter++;
@@ -71,9 +72,9 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
         UniTask.ToCoroutine(async () =>
         {
             // Ensure the cache directory doesn't exist.
-            if (Directory.Exists(Client._cacheDir))
+            if (Directory.Exists(Client.CacheDirectoryPath()))
             {
-                Directory.Delete(Client._cacheDir, true);
+                Directory.Delete(Client.CacheDirectoryPath(), true);
             }
 
             try
@@ -88,7 +89,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
             }
 
             // Assert: Check if cache directory is created successfully
-            Assert.IsTrue(Directory.Exists(Client._cacheDir), "Cache directory should have been created.");
+            Assert.IsTrue(Directory.Exists(Client.CacheDirectoryPath()), "Cache directory should have been created.");
         });
 
     [UnityTest]
@@ -104,7 +105,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
         await Client.InvalidateCacheAsync();
 
         // Act: Download and cache a Sprite
-        await Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test.png");
+        await Client.GetCachedSpriteAsync("test.png");
 
         // Assert: Ensure the server received the request
         Assert.AreEqual(1, callCounter, "The server should have been hit once.");
@@ -118,19 +119,19 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
         MockServer.ResponseBytes = RealPngBytes;
 
         // Act: Download and cache a Sprite
-        await Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test_first.png");
+        await Client.GetCachedSpriteAsync("test_first.png");
 
         // Act: Invalidate cache
         await Client.InvalidateCacheAsync();
 
         // Assert: Ensure the index file is deleted
-        Assert.IsFalse(File.Exists(Client._cacheIndexPath), "The index file should have been deleted.");
+        Assert.IsFalse(File.Exists(Client.CacheIndexPath()), "The index file should have been deleted.");
 
         // Act: Download and cache another Sprite
-        await Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test_second.png");
+        await Client.GetCachedSpriteAsync("test_second.png");
 
         // Assert: Ensure the index file is recreated
-        Assert.IsTrue(File.Exists(Client._cacheIndexPath), "The index file should have been recreated.");
+        Assert.IsTrue(File.Exists(Client.CacheIndexPath()), "The index file should have been recreated.");
     });
 
     [UnityTest]
@@ -146,7 +147,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
 
         // Act: start the download (don't await yet), wait until the server has received it
         // (lock is now held), then fire an invalidation while the write is still pending.
-        var downloadTask = Client.GetCachedSpriteAsync(MockServer.ServerUrl + "in_flight_write.png");
+        var downloadTask = Client.GetCachedSpriteAsync("in_flight_write.png");
         await requestReceived.Task;
         var invalidateTask = Client.InvalidateCacheAsync();
 
@@ -158,7 +159,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
 
         // ...but since the invalidation could only run after the write released its lock,
         // the resulting cache should end up empty rather than containing a half-deleted file.
-        Assert.AreEqual(0, Directory.GetFiles(Client._cacheDir, "*.png").Length,
+        Assert.AreEqual(0, Directory.GetFiles(Client.CacheDirectoryPath(), "*.png").Length,
             "The file written during the race should have been removed by the invalidation that followed it.");
     });
 
@@ -168,8 +169,8 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
         {
             // Arrange: prime the cache so the next request for the same URL is a cache hit
             // that only reads from disk, we rely on repeated attempts to surface a race).
-            var testCount = 25;
-            var url = MockServer.ServerUrl + "test.png";
+            const int testCount = 25;
+            const string url = "test.png";
             MockServer.ResponseStatusCode = 200;
             MockServer.ResponseBytes = RealPngBytes;
 
@@ -187,7 +188,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
                 Sprite sprite = null;
                 try
                 {
-                    sprite = await readTask;
+                    sprite = (await readTask).Sprite;
                 }
                 catch (Exception e)
                 {
@@ -208,7 +209,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
             MockServer.ResponseStatusCode = 200;
             MockServer.ResponseBytes = RealPngBytes;
             MockServer.OnRequestReceived = _ => callCounter++;
-            var sameUrl = MockServer.ServerUrl + "test.png";
+            const string sameUrl = "same/test.png";
 
             // Act: fire the invalidation and a brand-new cache request for an unseen URL
             // at the same time, with no synchronization between them.
@@ -220,7 +221,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
 
             // Assert: the request completed successfully and is now cached on disk.
             Assert.AreEqual(1, callCounter, "The server should have been hit exactly once.");
-            Assert.AreEqual(1, Directory.GetFiles(Client._cacheDir, "*.png").Length,
+            Assert.AreEqual(1, Directory.GetFiles(Client.CacheDirectoryPath(), "*.png").Length,
                 "The request started mid-invalidation should have re-populated the cache.");
 
             // Act: request the same URL again.
@@ -239,7 +240,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
             MockServer.ResponseBytes = RealPngBytes;
 
             // Act: Download and cache a Sprite
-            await Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test_before.png");
+            await Client.GetCachedSpriteAsync("test_before.png");
 
             // Act: fire several invalidations at the same time.
             var invalidateTasks = new List<UniTask>();
@@ -251,13 +252,13 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
             await UniTask.WhenAll(invalidateTasks);
 
             // Assert: cache directory ends up in a valid, empty state.
-            Assert.IsTrue(Directory.Exists(Client._cacheDir), "Cache directory should still exist.");
-            Assert.AreEqual(0, Directory.GetFiles(Client._cacheDir, "*.png").Length,
+            Assert.IsTrue(Directory.Exists(Client.CacheDirectoryPath()), "Cache directory should still exist.");
+            Assert.AreEqual(0, Directory.GetFiles(Client.CacheDirectoryPath(), "*.png").Length,
                 "Cache should be empty after concurrent invalidations.");
 
             // Assert: the client is still usable afterward.
-            await Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test_after.png");
-            Assert.AreEqual(1, Directory.GetFiles(Client._cacheDir, "*.png").Length,
+            await Client.GetCachedSpriteAsync("test_after.png");
+            Assert.AreEqual(1, Directory.GetFiles(Client.CacheDirectoryPath(), "*.png").Length,
                 "Client should still be able to cache files after concurrent invalidations.");
         });
 
@@ -271,7 +272,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
             MockServer.ResponseBytes = RealPngBytes;
             for (var i = 0; i < 10; i++)
             {
-                await Client.GetCachedSpriteAsync(MockServer.ServerUrl + $"test_[{i}].png");
+                await Client.GetCachedSpriteAsync($"test_{i}.png");
             }
 
             // Act
@@ -291,7 +292,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
         // Arrange
         MockServer.ResponseStatusCode = 200;
         MockServer.ResponseBytes = RealPngBytes;
-        await Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test.png");
+        await Client.GetCachedSpriteAsync("test.png");
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -310,7 +311,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
         // Assert: any locks taken were released cleanly, so a normal, non-cancelled call
         // right afterward still succeeds instead of hanging.
         await Client.InvalidateCacheAsync(CancellationToken.None);
-        Assert.IsTrue(Directory.Exists(Client._cacheDir), "Cache directory should exist after recovery.");
+        Assert.IsTrue(Directory.Exists(Client.CacheDirectoryPath()), "Cache directory should exist after recovery.");
     });
 
     [UnityTest]
@@ -322,7 +323,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
             MockServer.ResponseStatusCode = 200;
             MockServer.ResponseBytes = RealPngBytes;
             MockServer.OnRequestReceived = _ => callCounter++;
-            var url = MockServer.ServerUrl + "test.png";
+            const string url = "same/test.png";
 
             // Act: Invalidate cache.
             await Client.InvalidateCacheAsync();
@@ -336,7 +337,7 @@ public class ApiClientInvalidateCacheTests : ApiClientTestBase
             Assert.AreEqual(1, callCounter, "Second request should be served from the cache, not the server.");
 
             // Assert: the file and index entry both exist on disk.
-            Assert.AreEqual(1, Directory.GetFiles(Client._cacheDir, "*.png").Length);
-            Assert.IsTrue(File.Exists(Client._cacheIndexPath));
+            Assert.AreEqual(1, Directory.GetFiles(Client.CacheDirectoryPath(), "*.png").Length);
+            Assert.IsTrue(File.Exists(Client.CacheIndexPath()));
         });
 }

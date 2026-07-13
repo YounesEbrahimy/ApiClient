@@ -1,39 +1,21 @@
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using ApiClientLib.SubClasses;
 using UnityEngine.Networking;
+using ApiClientLib.Helpers;
 using System.Threading;
-using Newtonsoft.Json;
-using Codice.Utils;
 using UnityEngine;
-using System.Text;
 using System.IO;
 using System;
 
 namespace ApiClientLib
 {
-    public class ApiClient : IApiClient
+    public sealed class ApiClient : IApiClient
     {
-        public Dictionary<string, string> Headers => _persistentHeaders;
-        private readonly Dictionary<string, string> _persistentHeaders = new();
-
-        internal readonly string _cacheDir;
-        internal readonly string _cacheIndexPath;
-
-        private Dictionary<string, CacheEntry> _cacheIndex;
-        private readonly ConcurrentDictionary<string, SemaphoreSlim> _fileLocks = new();
-        private readonly SemaphoreSlim _globalCacheLock = new(1, 1);
-
-        public string BaseUrl => _baseUrl;
-        private string _baseUrl = string.Empty;
-
         // ── Constructors ──────────────────────────────────────────────────────────
 
         public ApiClient()
         {
-            _cacheDir = Path.Combine(Application.persistentDataPath, "api_client_cache");
-            _cacheIndexPath = Path.Combine(_cacheDir, "index.json");
-            Directory.CreateDirectory(_cacheDir);
         }
 
         public ApiClient(string baseUrl) : this()
@@ -41,227 +23,197 @@ namespace ApiClientLib
             SetBaseUrl(baseUrl);
         }
 
+        // ── Instance ID ───────────────────────────────────────────────────────────
+
+        private static int _nextId = -1;
+        public int InstanceID { get; } = Interlocked.Increment(ref _nextId);
+
+        // ── Events ────────────────────────────────────────────────────────────────
+
+        public event Action<ApiEventData> OnRequestCompleted;
+
         // ── Base Url ──────────────────────────────────────────────────────────────
 
-        public void SetBaseUrl(string baseUrl)
-        {
-            if (baseUrl == null)
-            {
-                throw new ArgumentNullException(nameof(baseUrl));
-            }
-
-            if (baseUrl.Length == 0)
-            {
-                _baseUrl = string.Empty;
-            }
-            else
-            {
-                _baseUrl = baseUrl.EndsWith("/") ? baseUrl : baseUrl + "/";
-            }
-        }
+        private readonly IBaseUrlManager _baseUrlManager = new BaseUrlManager();
+        public string BaseUrl => _baseUrlManager.BaseUrl;
+        public void SetBaseUrl(string baseUrl) => _baseUrlManager.SetBaseUrl(baseUrl);
 
         // ── Persistent Headers ────────────────────────────────────────────────────
 
-        public void AddHeader(string key, string value) => _persistentHeaders[key] = value;
-        public void RemoveHeader(string key) => _persistentHeaders.Remove(key);
-        public void ClearHeaders() => _persistentHeaders.Clear();
+        private readonly IHeaderManager _headerManager = new HeaderManager();
+        public IReadOnlyDictionary<string, string> Headers => _headerManager.Headers;
+        public void AddHeader(string key, string value) => _headerManager.AddHeader(key, value);
+        public void RemoveHeader(string key) => _headerManager.RemoveHeader(key);
+        public void ClearHeaders() => _headerManager.ClearHeaders();
 
-        // ── Cache Control ─────────────────────────────────────────────────────────
+        // ── Cache ─────────────────────────────────────────────────────────────────
 
-        public async UniTask InvalidateCacheAsync(CancellationToken ct = default)
-        {
-            var heldFileLocks = new List<SemaphoreSlim>();
+        internal readonly ICacheManager _cacheManager = new CacheManager();
 
-            try
-            {
-                bool acquiredNew;
-                do
-                {
-                    acquiredNew = false;
-                    foreach (var fileLock in _fileLocks.Values)
-                    {
-                        if (heldFileLocks.Contains(fileLock)) continue;
-                        await fileLock.WaitAsync(ct);
-                        heldFileLocks.Add(fileLock);
-                        acquiredNew = true;
-                    }
-                } while (acquiredNew);
-
-                await _globalCacheLock.WaitAsync(ct);
-                try
-                {
-                    await UniTask.RunOnThreadPool(() =>
-                    {
-                        if (Directory.Exists(_cacheDir))
-                            Directory.Delete(_cacheDir, recursive: true);
-
-                        Directory.CreateDirectory(_cacheDir);
-                    }, cancellationToken: ct);
-
-                    _cacheIndex = new Dictionary<string, CacheEntry>();
-                }
-                finally
-                {
-                    _globalCacheLock.Release();
-                }
-            }
-            finally
-            {
-                foreach (var fileLock in heldFileLocks)
-                    fileLock.Release();
-            }
-        }
+        public async UniTask InvalidateCacheAsync(CancellationToken ct = default) =>
+            await _cacheManager.InvalidateAsync(ct);
 
         // ── GET Methods ───────────────────────────────────────────────────────────
 
-        public async UniTask GetAsync(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<int> GetAsync(string url, IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbGET, null, headers, queryParams,
-                urlType, timeout, ct);
+            return (await JsonRequestHandling.HandleJsonWebRequestAsync<AsyncUnit>(false, OnRequestCompleted,
+                RequestMethod.GET,
+                url, BaseUrl, null, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID)).StatusCode;
         }
 
-        public async UniTask<T> GetAsync<T>(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<ApiResponse<T>> GetAsync<T>(string url,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbGET, null, headers, queryParams,
-                urlType, timeout, ct);
-            return ProcessResponse<T>(req);
+            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted, RequestMethod.GET,
+                url, BaseUrl, null, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID);
         }
 
         // ── POST Methods ──────────────────────────────────────────────────────────
 
-        public async UniTask PostAsync(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<int> PostAsync(string url, object body,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPOST, body, headers,
-                queryParams, urlType, timeout, ct);
+            return (await JsonRequestHandling.HandleJsonWebRequestAsync<AsyncUnit>(false, OnRequestCompleted,
+                RequestMethod.POST, url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct,
+                InstanceID)).StatusCode;
         }
 
-        public async UniTask<T> PostAsync<T>(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<ApiResponse<T>> PostAsync<T>(string url, object body,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPOST, body, headers,
-                queryParams, urlType, timeout, ct);
-            return ProcessResponse<T>(req);
+            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted, RequestMethod.POST,
+                url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID);
         }
 
         // ── PUT Methods ───────────────────────────────────────────────────────────
 
-        public async UniTask PutAsync(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<int> PutAsync(string url, object body,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPUT, body, headers, queryParams,
-                urlType, timeout, ct);
+            return (await JsonRequestHandling.HandleJsonWebRequestAsync<AsyncUnit>(false, OnRequestCompleted,
+                RequestMethod.PUT,
+                url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID)).StatusCode;
         }
 
-        public async UniTask<T> PutAsync<T>(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<ApiResponse<T>> PutAsync<T>(string url, object body,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbPUT, body, headers, queryParams,
-                urlType, timeout, ct);
-            return ProcessResponse<T>(req);
+            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted, RequestMethod.PUT,
+                url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID);
         }
 
         // ── PATCH Methods ─────────────────────────────────────────────────────────
 
-        public async UniTask PatchAsync(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<int> PatchAsync(string url, object body,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req =
-                await SendJsonWebRequestAsync(url, "PATCH", body, headers, queryParams, urlType, timeout, ct);
+            return (await JsonRequestHandling.HandleJsonWebRequestAsync<AsyncUnit>(false, OnRequestCompleted,
+                RequestMethod.PATCH, url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct,
+                InstanceID)).StatusCode;
         }
 
-        public async UniTask<T> PatchAsync<T>(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<ApiResponse<T>> PatchAsync<T>(string url, object body,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req =
-                await SendJsonWebRequestAsync(url, "PATCH", body, headers, queryParams, urlType, timeout, ct);
-            return ProcessResponse<T>(req);
+            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted, RequestMethod.PATCH,
+                url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID);
         }
 
         // ── DELETE Methods ────────────────────────────────────────────────────────
 
-        public async UniTask DeleteAsync(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<int> DeleteAsync(string url, IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbDELETE, null, headers,
-                queryParams, urlType, timeout, ct);
+            return (await JsonRequestHandling.HandleJsonWebRequestAsync<AsyncUnit>(false, OnRequestCompleted,
+                RequestMethod.DELETE, url, BaseUrl, null, Headers, customHeaders, queryParams, urlType, timeout, ct,
+                InstanceID)).StatusCode;
         }
 
-        public async UniTask<T> DeleteAsync<T>(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<ApiResponse<T>> DeleteAsync<T>(string url,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req = await SendJsonWebRequestAsync(url, UnityWebRequest.kHttpVerbDELETE, null, headers,
-                queryParams, urlType, timeout, ct);
-            return ProcessResponse<T>(req);
+            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted,
+                RequestMethod.DELETE, url, BaseUrl, null, Headers, customHeaders, queryParams, urlType, timeout, ct,
+                InstanceID);
         }
 
         // ── Sprite Methods ────────────────────────────────────────────────────────
 
-        public async UniTask<Sprite> GetSpriteAsync(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<SpriteResponse> GetSpriteAsync(string url,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            using var req = UnityWebRequestTexture.GetTexture(
-                urlType == UrlType.Relative ? CombineUrl(url) : url
-            );
-            ApplyRequestProperties(req, _persistentHeaders, headers, queryParams, timeout);
+            var startTime = 0L;
+            Logging.StartLogTimer(ref startTime);
+
+            string cleanUrl = null;
+            UnityWebRequest req = null;
+            Exception exception = null;
 
             try
             {
-                await req.SendWebRequest().ToUniTask(cancellationToken: ct);
-            }
-            catch (UnityWebRequestException e)
-            {
-                e.UnityWebRequest.ThrowIfTimeout();
-                if (req.responseCode is >= 200 and < 300)
-                {
-                    if (IsBodyLessResponse(req.responseCode))
-                        throw new ApiException((int)req.responseCode, req.downloadHandler?.error);
-                    else
-                        throw new BadSpriteException(e);
-                }
-                else
-                {
-                    throw new ApiException((int)req.responseCode, req.downloadHandler?.error);
-                }
-            }
-
-            var tex = DownloadHandlerTexture.GetContent(req);
-            try
-            {
-                return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+                cleanUrl = UrlValidation.CombineAndValidateUrl(url, urlType, BaseUrl);
+                req = UnityWebRequestTexture.GetTexture(cleanUrl);
+                var result =
+                    await SpriteRequestHandling.SendSpriteRequestAsync(req, Headers, customHeaders, queryParams,
+                        timeout, ct);
+                return new SpriteResponse(result.statusCode, result.sprite);
             }
             catch (Exception e)
             {
-                throw new BadSpriteException(e);
+                exception = e;
+                throw;
+            }
+            finally
+            {
+                Logging.ExecuteLogTrigger(false, false, false, cleanUrl, RequestMethod.GET_SPRITE, timeout, Headers,
+                    customHeaders, queryParams, req, startTime, OnRequestCompleted, InstanceID, ex: exception);
+                req?.Dispose();
             }
         }
 
-        public UniTask<Sprite> GetCachedSpriteAsync(string url, int cacheDays = 14,
-            Dictionary<string, string> headers = null, Dictionary<string, string> queryParams = null,
-            UrlType urlType = UrlType.Relative, int timeout = 10, CancellationToken ct = default)
+        public async UniTask<SpriteResponse> GetCachedSpriteAsync(string url, int cacheDays = 14,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
             Sprite downloadedSprite = null;
+            var requestReference = new Ref<UnityWebRequest>();
 
-            return GetCachedAssetAsync(
-                urlType == UrlType.Relative ? CombineUrl(url) : url,
-                fileExtension: "png",
+            var operationResult = await CachedRequestHandling.GetCachedAssetAsync(
+                BaseUrl,
+                url,
+                urlType,
+                _cacheManager,
                 downloadToBytes: async token =>
                 {
-                    downloadedSprite = await GetSpriteAsync(url, headers, queryParams, urlType, timeout, token);
-                    return downloadedSprite.texture.EncodeToPNG();
+                    var cleanUrl = UrlValidation.CombineAndValidateUrl(url, urlType, BaseUrl);
+                    requestReference.Value = UnityWebRequestTexture.GetTexture(cleanUrl);
+                    var downloadResult = await SpriteRequestHandling.SendSpriteRequestAsync(requestReference.Value,
+                        Headers, customHeaders, queryParams, timeout, token);
+                    downloadedSprite = downloadResult.sprite;
+                    return new(downloadResult.statusCode, downloadedSprite.texture.EncodeToPNG());
                 },
                 deserializeFromPath: async (path, token) =>
                 {
@@ -269,388 +221,86 @@ namespace ApiClientLib
 
                     var bytes = await UniTask.RunOnThreadPool(
                         () => File.ReadAllBytes(path), cancellationToken: token);
-                    return BytesToSprite(bytes);
-                },
-                cacheDays, ct);
+                    return SpriteRequestHandling.BytesToSprite(bytes);
+                }, cacheDays, requestReference, RequestMethod.GET_SPRITE, timeout, Headers, customHeaders, queryParams,
+                ct, InstanceID, OnRequestCompleted, "png");
+            return new SpriteResponse(operationResult.statusCode, operationResult.asset);
         }
 
         // ── AudioClip Methods ─────────────────────────────────────────────────────
 
-        public async UniTask<AudioClip> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
-            Dictionary<string, string> headers = null, Dictionary<string, string> queryParams = null,
-            UrlType urlType = UrlType.Relative, int timeout = 10, CancellationToken ct = default)
+        public async UniTask<AudioClipResponse> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            var resolvedType = audioType == AudioType.UNKNOWN ? DetectAudioType(url) : audioType;
-            using var req = UnityWebRequestMultimedia.GetAudioClip(
-                urlType == UrlType.Relative ? CombineUrl(url) : url,
-                resolvedType
-            );
-            ApplyRequestProperties(req, _persistentHeaders, headers, queryParams, timeout);
+            var startTime = 0L;
+            Logging.StartLogTimer(ref startTime);
+
+            string cleanUrl = null;
+            UnityWebRequest req = null;
+            Exception exception = null;
 
             try
             {
-                await req.SendWebRequest().ToUniTask(cancellationToken: ct);
-            }
-            catch (UnityWebRequestException e)
-            {
-                e.UnityWebRequest.ThrowIfTimeout();
-                if (req.responseCode is >= 200 and < 300)
-                {
-                    if (IsBodyLessResponse(req.responseCode))
-                        throw new ApiException((int)req.responseCode, req.downloadHandler?.error);
-                    else
-                        throw new BadAudioClipException(e);
-                }
-                else
-                {
-                    throw new ApiException((int)req.responseCode, req.downloadHandler?.error);
-                }
-            }
+                cleanUrl = UrlValidation.CombineAndValidateUrl(url, urlType, BaseUrl);
 
-            if (IsBodyLessResponse(req.responseCode))
-                throw new ApiException((int)req.responseCode, req.downloadHandler?.error);
+                var ext = CachedRequestHandling.GetUrlFileExtension(url);
+                if (ext == null)
+                    throw new InvalidUrlException(url, null, null,
+                        "When Requesting for an AudioClip url, url must contain file extension.");
+                var resolvedType = audioType == AudioType.UNKNOWN
+                    ? AudioClipRequestHandling.DetectAudioType(url)
+                    : audioType;
 
-            try
-            {
-                var clip = DownloadHandlerAudioClip.GetContent(req);
-                if (req.result == UnityWebRequest.Result.DataProcessingError || clip == null ||
-                    clip.loadState == AudioDataLoadState.Failed)
-                    throw new Exception("Invalid audio data received.");
-
-                return clip;
+                req = UnityWebRequestMultimedia.GetAudioClip(cleanUrl, resolvedType);
+                var result =
+                    await AudioClipRequestHandling.SendAudioClipRequestAsync(req, Headers, customHeaders, queryParams,
+                        timeout, ct);
+                return new AudioClipResponse(result.statusCode, result.clip);
             }
             catch (Exception e)
             {
-                throw new BadAudioClipException(e);
+                exception = e;
+                throw;
+            }
+            finally
+            {
+                Logging.ExecuteLogTrigger(false, false, false, cleanUrl, RequestMethod.GET_AUDIOCLIP, timeout, Headers,
+                    customHeaders, queryParams, req, startTime, OnRequestCompleted, InstanceID, ex: exception);
+                req?.Dispose();
             }
         }
 
-        public UniTask<AudioClip> GetCachedAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
-            int cacheDays = 14, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default)
+        public async UniTask<AudioClipResponse> GetCachedAudioClipAsync(string url,
+            AudioType audioType = AudioType.UNKNOWN, int cacheDays = 14,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default)
         {
-            var ext = GetUrlFileExtension(url);
-            if (ext == null)
-                throw new InvalidUrlException(url, null, null,
-                    "When Requesting for an AudioClip url, url must contain file extension.");
+            var resolvedType = audioType == AudioType.UNKNOWN
+                ? AudioClipRequestHandling.DetectAudioType(url)
+                : audioType;
+            var requestReference = new Ref<UnityWebRequest>();
 
-            var resolvedType = audioType == AudioType.UNKNOWN ? DetectAudioType(url) : audioType;
-            var finalUrl = urlType == UrlType.Relative ? CombineUrl(url) : url;
-
-            return GetCachedAssetAsync(
-                finalUrl,
-                fileExtension: ext,
+            var operationResult = await CachedRequestHandling.GetCachedAssetAsync(
+                BaseUrl,
+                url,
+                urlType,
+                _cacheManager,
                 downloadToBytes: async token =>
                 {
-                    using var req = UnityWebRequest.Get(finalUrl);
-                    ApplyRequestProperties(req, _persistentHeaders, headers, queryParams, timeout);
-                    try
-                    {
-                        await req.SendWebRequest().ToUniTask(cancellationToken: token);
-                    }
-                    catch (UnityWebRequestException e)
-                    {
-                        e.UnityWebRequest.ThrowIfTimeout();
-                        throw new ApiException((int)req.responseCode, req.downloadHandler?.error);
-                    }
-
-                    return req.downloadHandler.data;
+                    requestReference.Value =
+                        UnityWebRequestMultimedia.GetAudioClip(
+                            UrlValidation.CombineAndValidateUrl(url, urlType, BaseUrl), resolvedType);
+                    return await AudioClipRequestHandling.SendRawBytesRequestAsync(requestReference.Value, Headers,
+                        customHeaders, queryParams, timeout, token);
                 },
-                deserializeFromPath: (path, token) => LoadAudioClipFromPathAsync(path, resolvedType, token),
-                cacheDays, ct);
-        }
-
-        // ── Helpers ───────────────────────────────────────────────────────────────
-
-        internal string CombineUrl(string relativeUrl)
-        {
-            return ValidatedUrl(_baseUrl, relativeUrl);
-        }
-
-        internal static string ValidatedUrl(string baseUrl, string relativeUrl)
-        {
-            relativeUrl ??= string.Empty;
-            var mergedUrl = baseUrl + relativeUrl;
-            var isValid = Uri.TryCreate(mergedUrl, UriKind.Absolute, out var uriResult) &&
-                          (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
-
-            return isValid
-                ? mergedUrl
-                : throw new InvalidUrlException(mergedUrl, baseUrl, relativeUrl,
-                    $"Invalid URL: '{mergedUrl}'. Must be an absolute HTTP or HTTPS URL.");
-        }
-
-        private async UniTask<UnityWebRequest> SendJsonWebRequestAsync(string url, string method, object body,
-            Dictionary<string, string> headers, Dictionary<string, string> queryParams, UrlType urlType, int timeout,
-            CancellationToken ct)
-        {
-            var req = CreateJsonWebRequest(
-                urlType == UrlType.Relative ? CombineUrl(url) : url,
-                body,
-                method
-            );
-            ApplyRequestProperties(req, _persistentHeaders, headers, queryParams, timeout);
-
-            try
-            {
-                await req.SendWebRequest().ToUniTask(cancellationToken: ct);
-            }
-            catch (UnityWebRequestException e)
-            {
-                e.UnityWebRequest.ThrowIfTimeout();
-                throw new ApiException((int)e.ResponseCode, e.UnityWebRequest.downloadHandler?.error);
-            }
-
-            return req;
-        }
-
-        private static UnityWebRequest CreateJsonWebRequest(string url, object body, string method)
-        {
-            var req = new UnityWebRequest(url, method);
-            if (body != null)
-            {
-                string json;
-                try
-                {
-                    json = JsonConvert.SerializeObject(body);
-                }
-                catch (Exception e)
-                {
-                    throw new JsonException(e);
-                }
-
-                var bodyRaw = Encoding.UTF8.GetBytes(json);
-                req.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            }
-
-            req.downloadHandler = new DownloadHandlerBuffer();
-            req.SetRequestHeader("Content-Type", "application/json");
-            return req;
-        }
-
-        private static void ApplyRequestProperties(UnityWebRequest req, Dictionary<string, string> persistentHeaders,
-            Dictionary<string, string> customHeaders, Dictionary<string, string> queryParams, int timeout)
-        {
-            foreach (var kvp in persistentHeaders) req.SetRequestHeader(kvp.Key, kvp.Value);
-            if (customHeaders != null)
-            {
-                foreach (var kvp in customHeaders) req.SetRequestHeader(kvp.Key, kvp.Value);
-            }
-
-            if (queryParams != null)
-            {
-                var uriBuilder = new UriBuilder(req.url);
-                var query = HttpUtility.ParseQueryString(uriBuilder.Query);
-
-                foreach (var qParam in queryParams)
-                {
-                    query[qParam.Key] = qParam.Value;
-                }
-
-                uriBuilder.Query = query.ToString();
-                req.url = uriBuilder.ToString();
-            }
-
-            req.timeout = timeout;
-        }
-
-        private T ProcessResponse<T>(UnityWebRequest req)
-        {
-            if (IsBodyLessResponse(req.responseCode))
-                throw new ApiException((int)req.responseCode, "Expected response but none was provided by the server");
-
-            var text = req.downloadHandler?.text;
-
-            if (string.IsNullOrEmpty(text))
-                throw new JsonException(new NullReferenceException("Server response was null"));
-
-            if (typeof(T) == typeof(string)) return (T)(object)text;
-            try
-            {
-                return JsonConvert.DeserializeObject<T>(text);
-            }
-            catch (Exception e)
-            {
-                throw new JsonException(e);
-            }
-        }
-
-        internal static bool IsBodyLessResponse(long statusCode)
-        {
-            return statusCode is 204 or 205 or 304 or >= 100 and < 200;
-        }
-
-        private async UniTask EnsureCacheIndexLoadedAsync()
-        {
-            if (_cacheIndex != null) return;
-
-            await _globalCacheLock.WaitAsync();
-            try
-            {
-                if (_cacheIndex != null) return;
-
-                if (File.Exists(_cacheIndexPath))
-                {
-                    var json = await UniTask.RunOnThreadPool(() => File.ReadAllText(_cacheIndexPath));
-                    try
-                    {
-                        _cacheIndex = JsonConvert.DeserializeObject<Dictionary<string, CacheEntry>>(json);
-                    }
-                    catch (Exception e)
-                    {
-                        _cacheIndex = new();
-                        try
-                        {
-                            File.Delete(_cacheIndexPath);
-                        }
-                        catch (Exception ex)
-                        {
-                            // ignored, since client can't do anything about it.
-                        }
-                    }
-                }
-                else
-                {
-                    _cacheIndex = new();
-                }
-            }
-            catch (Exception e)
-            {
-                _cacheIndex = new();
-            }
-            finally
-            {
-                _globalCacheLock.Release();
-            }
-        }
-
-        private async UniTask<T> GetCachedAssetAsync<T>(string url, string fileExtension,
-            Func<CancellationToken, UniTask<byte[]>> downloadToBytes,
-            Func<string, CancellationToken, UniTask<T>> deserializeFromPath, int cacheDays, CancellationToken ct)
-        {
-            var key = ComputeHash(url);
-            var filePath = Path.Combine(_cacheDir, $"{key}.{fileExtension}");
-
-            await EnsureCacheIndexLoadedAsync();
-
-            var fileLock = _fileLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
-            await fileLock.WaitAsync(ct);
-
-            try
-            {
-                bool isLocalCacheValid;
-                await _globalCacheLock.WaitAsync(ct);
-                try
-                {
-                    isLocalCacheValid = File.Exists(filePath) && IsCacheValidInternal(key, cacheDays);
-                }
-                finally
-                {
-                    _globalCacheLock.Release();
-                }
-
-                if (isLocalCacheValid)
-                    return await deserializeFromPath(filePath, ct);
-
-                var bytes = await downloadToBytes(ct);
-                ct.ThrowIfCancellationRequested();
-                await SaveAssetToDiskAsync(bytes, filePath, key, url);
-
-                return await deserializeFromPath(filePath, ct);
-            }
-            finally
-            {
-                fileLock.Release();
-            }
-        }
-
-        private bool IsCacheValidInternal(string key, int cacheDays) =>
-            _cacheIndex.TryGetValue(key, out var entry) && DateTime.UtcNow < entry.CachedAt.AddDays(cacheDays);
-
-        private async UniTask SaveAssetToDiskAsync(byte[] bytes, string filePath, string key, string url)
-        {
-            if (!Directory.Exists(_cacheDir))
-                Directory.CreateDirectory(_cacheDir);
-
-            await _globalCacheLock.WaitAsync();
-            try
-            {
-                _cacheIndex[key] = new CacheEntry { Url = url, CachedAt = DateTime.UtcNow };
-                var indexJson = JsonConvert.SerializeObject(_cacheIndex);
-
-                await UniTask.RunOnThreadPool(() =>
-                {
-                    File.WriteAllBytes(filePath, bytes);
-                    File.WriteAllText(_cacheIndexPath, indexJson);
-                });
-            }
-            finally
-            {
-                _globalCacheLock.Release();
-            }
-        }
-
-        private static Sprite BytesToSprite(byte[] bytes)
-        {
-            var tex = new Texture2D(2, 2);
-            tex.LoadImage(bytes);
-            return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
-        }
-
-        internal static string ComputeHash(string input)
-        {
-            using var sha = System.Security.Cryptography.SHA256.Create();
-            var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
-            return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
-        }
-
-        private static async UniTask<AudioClip> LoadAudioClipFromPathAsync(
-            string filePath, AudioType audioType, CancellationToken ct)
-        {
-            using var req = UnityWebRequestMultimedia.GetAudioClip("file://" + filePath, audioType);
-            ((DownloadHandlerAudioClip)req.downloadHandler).streamAudio = false;
-
-            try
-            {
-                await req.SendWebRequest().ToUniTask(cancellationToken: ct);
-            }
-            catch (UnityWebRequestException e)
-            {
-                throw new BadAudioClipException(e);
-            }
-
-            try
-            {
-                return DownloadHandlerAudioClip.GetContent(req);
-            }
-            catch (Exception e)
-            {
-                throw new BadAudioClipException(e);
-            }
-        }
-
-        private static AudioType DetectAudioType(string url) => GetUrlFileExtension(url, "audio") switch
-        {
-            "mp3" or "mpeg" => AudioType.MPEG,
-            "ogg" => AudioType.OGGVORBIS,
-            "acc" => AudioType.ACC,
-            "wav" => AudioType.WAV,
-            "aiff" or "aif" => AudioType.AIFF,
-            _ => AudioType.UNKNOWN
-        };
-
-        private static string GetUrlFileExtension(string url, string fallback = null)
-        {
-            try
-            {
-                var ext = Path.GetExtension(url.Split('?')[0]).TrimStart('.');
-                return string.IsNullOrWhiteSpace(ext) ? fallback : ext.ToLowerInvariant();
-            }
-            catch
-            {
-                return fallback;
-            }
+                deserializeFromPath: (path, token) =>
+                    AudioClipRequestHandling.LoadAudioClipFromPathAsync(path, resolvedType, token), cacheDays,
+                requestReference, RequestMethod.GET_AUDIOCLIP, timeout, Headers, customHeaders, queryParams, ct,
+                InstanceID, OnRequestCompleted, null);
+            return new AudioClipResponse(operationResult.statusCode, operationResult.asset);
         }
     }
 }

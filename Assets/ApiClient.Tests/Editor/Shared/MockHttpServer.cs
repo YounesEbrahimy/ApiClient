@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Net.Sockets;
 using Newtonsoft.Json;
@@ -17,6 +18,7 @@ public class MockHttpServer : IDisposable
     public object ResponseObject { get; set; } = null;
     public byte[] ResponseBytes { get; set; } = null;
     public int DelayMilliseconds { get; set; } = 0;
+    public Dictionary<string, string> ResponseHeaders { get; set; } = null;
     public Action<HttpListenerRequest> OnRequestReceived { get; set; }
 
     public MockHttpServer()
@@ -75,7 +77,14 @@ public class MockHttpServer : IDisposable
         var buffer = ResponseBytes ?? Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(ResponseObject));
         context.Response.ContentLength64 = buffer.Length;
 
-        // 4. Send the response
+        // 4. Add the response headers
+        if (ResponseHeaders != null)
+        {
+            foreach (var header in ResponseHeaders)
+                context.Response.AddHeader(header.Key, header.Value);
+        }
+
+        // 5. Send the response
         try
         {
             await using var output = context.Response.OutputStream;

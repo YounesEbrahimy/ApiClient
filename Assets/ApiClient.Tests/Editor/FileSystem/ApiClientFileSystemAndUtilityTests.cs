@@ -1,8 +1,8 @@
 using Cysharp.Threading.Tasks;
 using UnityEngine.TestTools;
+using ApiClientLib.Helpers;
 using System.Collections;
 using NUnit.Framework;
-using ApiClientLib;
 using System.IO;
 
 [TestFixture]
@@ -40,8 +40,8 @@ public class ApiClientFileSystemAndUtilityTests : ApiClientTestBase
     public void ComputeHash_AlwaysReturnsConsistentHashForSameInput(string url)
     {
         // Act
-        var hash1 = ApiClient.ComputeHash(url);
-        var hash2 = ApiClient.ComputeHash(url);
+        var hash1 = CachedRequestHandling.ComputeHash(url);
+        var hash2 = CachedRequestHandling.ComputeHash(url);
 
         // Assert
         Assert.AreEqual(hash1, hash2, "Hashes for the exact same URL should be identical.");
@@ -59,18 +59,18 @@ public class ApiClientFileSystemAndUtilityTests : ApiClientTestBase
             MockServer.ResponseBytes = RealPngBytes;
 
             // Simulate the OS or user deleting the directory after the client was initialized
-            if (Directory.Exists(Client._cacheDir))
+            if (Directory.Exists(Client.CacheDirectoryPath()))
             {
-                Directory.Delete(Client._cacheDir, true);
+                Directory.Delete(Client.CacheDirectoryPath(), true);
             }
 
             // Act
-            await Client.GetCachedSpriteAsync(MockServer.ServerUrl + "recreate-dir.png");
+            await Client.GetCachedSpriteAsync("recreate-dir.png");
 
             // Assert
-            Assert.IsTrue(Directory.Exists(Client._cacheDir),
+            Assert.IsTrue(Directory.Exists(Client.CacheDirectoryPath()),
                 "The client should recreate the missing cache directory.");
-            Assert.IsTrue(Directory.GetFiles(Client._cacheDir, "*.png").Length == 1,
+            Assert.IsTrue(Directory.GetFiles(Client.CacheDirectoryPath(), "*.png").Length == 1,
                 "The sprite should be saved inside the newly recreated directory.");
         });
 
@@ -83,18 +83,18 @@ public class ApiClientFileSystemAndUtilityTests : ApiClientTestBase
             MockServer.ResponseBytes = RealMp3Bytes;
 
             // Simulate the OS or user deleting the directory after the client was initialized
-            if (Directory.Exists(Client._cacheDir))
+            if (Directory.Exists(Client.CacheDirectoryPath()))
             {
-                Directory.Delete(Client._cacheDir, true);
+                Directory.Delete(Client.CacheDirectoryPath(), true);
             }
 
             // Act
-            await Client.GetCachedAudioClipAsync(MockServer.ServerUrl + "recreate-dir.mp3");
+            await Client.GetCachedAudioClipAsync("recreate-dir.mp3");
 
             // Assert
-            Assert.IsTrue(Directory.Exists(Client._cacheDir),
+            Assert.IsTrue(Directory.Exists(Client.CacheDirectoryPath()),
                 "The client should recreate the missing cache directory.");
-            Assert.IsTrue(Directory.GetFiles(Client._cacheDir, "*.mp3").Length == 1,
+            Assert.IsTrue(Directory.GetFiles(Client.CacheDirectoryPath(), "*.mp3").Length == 1,
                 "The audio clip should be saved inside the newly recreated directory.");
         });
 }
