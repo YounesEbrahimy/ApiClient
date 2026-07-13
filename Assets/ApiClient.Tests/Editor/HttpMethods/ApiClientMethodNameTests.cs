@@ -3,6 +3,7 @@ using UnityEngine.TestTools;
 using System.Collections;
 using NUnit.Framework;
 using System.Text;
+using System;
 
 public class ApiClientMethodNameTests : ApiClientTestBase
 {
@@ -12,7 +13,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             Encoding.UTF8.GetBytes("Hello"),
-            Client.GetAsync(MockServer.ServerUrl + "api/test"),
+            () => Client.GetAsync("api/test"),
             "GET"
         );
     });
@@ -23,7 +24,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             Encoding.UTF8.GetBytes("Hello"),
-            Client.GetAsync<string>(MockServer.ServerUrl + "api/test"),
+            () => Client.GetAsync<string>("api/test"),
             "GET"
         );
     });
@@ -34,7 +35,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             Encoding.UTF8.GetBytes("Hello"),
-            Client.PostAsync(MockServer.ServerUrl + "api/test", string.Empty),
+            () => Client.PostAsync("api/test", string.Empty),
             "POST"
         );
     });
@@ -45,7 +46,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             Encoding.UTF8.GetBytes("Hello"),
-            Client.PostAsync<string>(MockServer.ServerUrl + "api/test", string.Empty),
+            () => Client.PostAsync<string>("api/test", string.Empty),
             "POST"
         );
     });
@@ -56,7 +57,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             Encoding.UTF8.GetBytes("Hello"),
-            Client.PutAsync(MockServer.ServerUrl + "api/test", string.Empty),
+            () => Client.PutAsync("api/test", string.Empty),
             "PUT"
         );
     });
@@ -67,7 +68,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             Encoding.UTF8.GetBytes("Hello"),
-            Client.PutAsync<string>(MockServer.ServerUrl + "api/test", string.Empty),
+            () => Client.PutAsync<string>("api/test", string.Empty),
             "PUT"
         );
     });
@@ -78,7 +79,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             Encoding.UTF8.GetBytes("Hello"),
-            Client.PatchAsync(MockServer.ServerUrl + "api/test", string.Empty),
+            () => Client.PatchAsync("api/test", string.Empty),
             "PATCH"
         );
     });
@@ -89,7 +90,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             Encoding.UTF8.GetBytes("Hello"),
-            Client.PatchAsync<string>(MockServer.ServerUrl + "api/test", string.Empty),
+            () => Client.PatchAsync<string>("api/test", string.Empty),
             "PATCH"
         );
     });
@@ -100,7 +101,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             Encoding.UTF8.GetBytes("Hello"),
-            Client.DeleteAsync(MockServer.ServerUrl + "api/test"),
+            () => Client.DeleteAsync("api/test"),
             "DELETE"
         );
     });
@@ -111,7 +112,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             Encoding.UTF8.GetBytes("Hello"),
-            Client.DeleteAsync<string>(MockServer.ServerUrl + "api/test"),
+            () => Client.DeleteAsync<string>("api/test"),
             "DELETE"
         );
     });
@@ -122,7 +123,18 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             RealPngBytes,
-            Client.GetSpriteAsync(MockServer.ServerUrl + "test.png"),
+            () => Client.GetSpriteAsync("test.png"),
+            "GET"
+        );
+    });
+
+    [UnityTest]
+    public IEnumerator GetCachedSpriteAsync_CheckMethodName() => UniTask.ToCoroutine(async () =>
+    {
+        await TestHttpRequestMethodName(
+            MockServer,
+            RealPngBytes,
+            () => Client.GetCachedSpriteAsync("test.png"),
             "GET"
         );
     });
@@ -133,7 +145,18 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         await TestHttpRequestMethodName(
             MockServer,
             RealMp3Bytes,
-            Client.GetAudioClipAsync(MockServer.ServerUrl + "test.mp3"),
+            () => Client.GetAudioClipAsync("test.mp3"),
+            "GET"
+        );
+    });
+
+    [UnityTest]
+    public IEnumerator GetCachedAudioClipAsync_CheckMethodName() => UniTask.ToCoroutine(async () =>
+    {
+        await TestHttpRequestMethodName(
+            MockServer,
+            RealMp3Bytes,
+            () => Client.GetCachedAudioClipAsync("test.mp3"),
             "GET"
         );
     });
@@ -141,7 +164,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static async UniTask TestHttpRequestMethodName(MockHttpServer server, byte[] responseBytes,
-        UniTask requestTask, string method)
+        Func<UniTask> requestFunc, string method)
     {
         // Arrange
         var spyHookTriggered = false;
@@ -154,7 +177,7 @@ public class ApiClientMethodNameTests : ApiClientTestBase
         };
 
         // Act
-        await requestTask;
+        await requestFunc();
 
         // Assert
         Assert.IsTrue(spyHookTriggered, "The MockServer spy hook was never triggered.");

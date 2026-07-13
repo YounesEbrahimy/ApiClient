@@ -45,9 +45,9 @@ public class ApiClientTestBase
         Client = new ApiClient(MockServer.ServerUrl);
 
         // 3. Wipe the sprite cache clean before EVERY test
-        if (Directory.Exists(Client._cacheDir))
+        if (Directory.Exists(Client.CacheDirectoryPath()))
         {
-            Directory.Delete(Client._cacheDir, true);
+            Directory.Delete(Client.CacheDirectoryPath(), true);
         }
     }
 

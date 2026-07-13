@@ -23,7 +23,31 @@ public class ApiClientRobustnessTests : ApiClientTestBase
             // Act & Assert
             try
             {
-                _ = await Client.GetSpriteAsync(MockServer.ServerUrl + "bad_data.png");
+                _ = await Client.GetSpriteAsync("bad_data.png");
+                Assert.Fail(); // Fail, Since it must throw BadSpriteException
+            }
+            catch (BadSpriteException e)
+            {
+                Assert.Pass(); // This is what we want
+            }
+            catch (Exception e)
+            {
+                Assert.Fail(); // Fail, Since it must throw BadSpriteException
+            }
+        });
+
+    [UnityTest]
+    public IEnumerator GetCachedSpriteAsync_WhenServerReturnsGarbage_ThrowsBadSpriteException() =>
+        UniTask.ToCoroutine(async () =>
+        {
+            // Arrange: Server returns non-image garbage
+            MockServer.ResponseStatusCode = 200;
+            MockServer.ResponseBytes = FakePngBytes;
+
+            // Act & Assert
+            try
+            {
+                _ = await Client.GetCachedSpriteAsync("bad_data.png");
                 Assert.Fail(); // Fail, Since it must throw BadSpriteException
             }
             catch (BadSpriteException e)
@@ -50,7 +74,34 @@ public class ApiClientRobustnessTests : ApiClientTestBase
             // Act & Assert
             try
             {
-                _ = await Client.GetAudioClipAsync(MockServer.ServerUrl + "bad_data.mp3");
+                _ = await Client.GetAudioClipAsync("bad_data.mp3");
+                Assert.Fail(); // Fail, Since it must throw BadAudioClipException
+            }
+            catch (BadAudioClipException e)
+            {
+                Assert.Pass(); // This is what we want
+            }
+            catch (Exception e)
+            {
+                Assert.Fail(); // Fail, Since it must throw BadAudioClipException
+            }
+        });
+
+    [UnityTest]
+    public IEnumerator GetCachedAudioClipAsync_WhenServerReturnsGarbage_ThrowsBadAudioClipException() =>
+        UniTask.ToCoroutine(async () =>
+        {
+            // Arrange: Server returns non-audioClip garbage
+            MockServer.ResponseStatusCode = 200;
+            MockServer.ResponseBytes = FakeMp3Bytes;
+
+            // Since the native audio processing layer will log an error, But it's expected
+            LogAssert.Expect(LogType.Error, new Regex("FMOD"));
+
+            // Act & Assert
+            try
+            {
+                _ = await Client.GetCachedAudioClipAsync("bad_data.mp3");
                 Assert.Fail(); // Fail, Since it must throw BadAudioClipException
             }
             catch (BadAudioClipException e)
@@ -67,8 +118,8 @@ public class ApiClientRobustnessTests : ApiClientTestBase
     public IEnumerator Cache_WhenIndexFileIsCorrupted_RecoversGracefully() => UniTask.ToCoroutine(async () =>
     {
         // Arrange: Manually corrupt the index file
-        Directory.CreateDirectory(Client._cacheDir);
-        await File.WriteAllTextAsync(Client._cacheIndexPath, "{ invalid json... ");
+        Directory.CreateDirectory(Client.CacheDirectoryPath());
+        await File.WriteAllTextAsync(Client.CacheIndexPath(), "{ invalid json... ");
 
         // Arrange
         MockServer.ResponseStatusCode = 200;
@@ -78,8 +129,8 @@ public class ApiClientRobustnessTests : ApiClientTestBase
         // and delete the corrupt cache index file
         try
         {
-            _ = await Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test.png");
-            var newJson = await File.ReadAllTextAsync(Client._cacheIndexPath);
+            _ = await Client.GetCachedSpriteAsync("test.png");
+            var newJson = await File.ReadAllTextAsync(Client.CacheIndexPath());
             _ = JsonConvert.DeserializeObject<Dictionary<string, CacheEntry>>(newJson);
             // If code reaches here without throw, then the corrupted cache file has been deleted,
             // recreated and saved successfully and all systems have worked accordingly
@@ -90,16 +141,4 @@ public class ApiClientRobustnessTests : ApiClientTestBase
             Assert.Fail();
         }
     });
-
-    [Test]
-    public void Basics_IdentifiesNoContentStatusCodesCorrectly()
-    {
-        // Iterates for all status codes between 0 and 1000 and checks if no-content
-        // status codes are identified correctly
-        for (var statusCode = 0; statusCode < 1000; statusCode++)
-        {
-            Assert.AreEqual(ApiClient.IsBodyLessResponse(statusCode), IsBodyLessResponse(statusCode)
-                , "Identified no content status code incorrectly");
-        }
-    }
 }

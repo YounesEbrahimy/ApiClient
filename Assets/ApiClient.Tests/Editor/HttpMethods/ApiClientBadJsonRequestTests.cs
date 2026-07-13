@@ -11,37 +11,37 @@ public class ApiClientBadJsonRequestTests : ApiClientTestBase
     [UnityTest]
     public IEnumerator PostAsyncNoBody_WhenBadJsonRequest_ThrowsJsonException() => UniTask.ToCoroutine(async () =>
     {
-        await TestBadJsonRequest(Client.PostAsync("api/v1/test", new InvalidJsonObject()));
+        await TestBadJsonRequest(() => Client.PostAsync("api/v1/test", new InvalidJsonObject()));
     });
 
     [UnityTest]
     public IEnumerator PostAsyncWithBody_WhenBadJsonRequest_ThrowsJsonException() => UniTask.ToCoroutine(async () =>
     {
-        await TestBadJsonRequest(Client.PostAsync<TestPayload>("api/v1/test", new InvalidJsonObject()));
+        await TestBadJsonRequest(() => Client.PostAsync<TestPayload>("api/v1/test", new InvalidJsonObject()));
     });
 
     [UnityTest]
     public IEnumerator PutAsyncNoBody_WhenBadJsonRequest_ThrowsJsonException() => UniTask.ToCoroutine(async () =>
     {
-        await TestBadJsonRequest(Client.PutAsync("api/v1/test", new InvalidJsonObject()));
+        await TestBadJsonRequest(() => Client.PutAsync("api/v1/test", new InvalidJsonObject()));
     });
 
     [UnityTest]
     public IEnumerator PutAsyncWithBody_WhenBadJsonRequest_ThrowsJsonException() => UniTask.ToCoroutine(async () =>
     {
-        await TestBadJsonRequest(Client.PutAsync<TestPayload>("api/v1/test", new InvalidJsonObject()));
+        await TestBadJsonRequest(() => Client.PutAsync<TestPayload>("api/v1/test", new InvalidJsonObject()));
     });
 
     [UnityTest]
     public IEnumerator PatchAsyncNoBody_WhenBadJsonRequest_ThrowsJsonException() => UniTask.ToCoroutine(async () =>
     {
-        await TestBadJsonRequest(Client.PatchAsync("api/v1/test", new InvalidJsonObject()));
+        await TestBadJsonRequest(() => Client.PatchAsync("api/v1/test", new InvalidJsonObject()));
     });
 
     [UnityTest]
     public IEnumerator PatchAsyncWithBody_WhenBadJsonRequest_ThrowsJsonException() => UniTask.ToCoroutine(async () =>
     {
-        await TestBadJsonRequest(Client.PatchAsync<TestPayload>("api/v1/test", new InvalidJsonObject()));
+        await TestBadJsonRequest(() => Client.PatchAsync<TestPayload>("api/v1/test", new InvalidJsonObject()));
     });
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -53,12 +53,12 @@ public class ApiClientBadJsonRequestTests : ApiClientTestBase
             => throw new Exception("Boom!");
     }
 
-    private static async UniTask TestBadJsonRequest(UniTask requestTask)
+    private static async UniTask TestBadJsonRequest(Func<UniTask> requestFunc)
     {
         try
         {
             // Act
-            await requestTask;
+            await requestFunc();
             Assert.Fail("Expected JsonException, but no exception was thrown.");
         }
         catch (JsonException ex)

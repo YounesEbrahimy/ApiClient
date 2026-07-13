@@ -1,5 +1,6 @@
 using Cysharp.Threading.Tasks;
 using UnityEngine.TestTools;
+using ApiClientLib.Helpers;
 using System.Collections;
 using NUnit.Framework;
 using ApiClientLib;
@@ -27,7 +28,10 @@ public class ApiClientResponseTests : ApiClientTestBase
             try
             {
                 // Act
-                await Client.GetAsync("api/v1/test");
+                var statusCode = await Client.GetAsync("api/v1/test");
+
+                // Assert, Status codes must match if success
+                Assert.AreEqual(code, statusCode);
             }
             catch (ApiException e)
             {
@@ -95,7 +99,10 @@ public class ApiClientResponseTests : ApiClientTestBase
         try
         {
             // Act
-            await Client.PostAsync("api/v1/test", sendPayload);
+            var statusCode = await Client.PostAsync("api/v1/test", sendPayload);
+
+            // Assert, Status codes must match if success
+            Assert.AreEqual(code, statusCode);
         }
         catch (ApiException e)
         {
@@ -164,7 +171,10 @@ public class ApiClientResponseTests : ApiClientTestBase
         try
         {
             // Act
-            await Client.PutAsync("api/v1/test", sendPayload);
+            var statusCode = await Client.PutAsync("api/v1/test", sendPayload);
+
+            // Assert, Status codes must match if success
+            Assert.AreEqual(code, statusCode);
         }
         catch (ApiException e)
         {
@@ -233,7 +243,10 @@ public class ApiClientResponseTests : ApiClientTestBase
         try
         {
             // Act
-            await Client.PatchAsync("api/v1/test", sendPayload);
+            var statusCode = await Client.PatchAsync("api/v1/test", sendPayload);
+
+            // Assert, Status codes must match if success
+            Assert.AreEqual(code, statusCode);
         }
         catch (ApiException e)
         {
@@ -301,7 +314,10 @@ public class ApiClientResponseTests : ApiClientTestBase
         try
         {
             // Act
-            await Client.DeleteAsync("api/v1/test");
+            var statusCode = await Client.DeleteAsync("api/v1/test");
+
+            // Assert, Status codes must match if success
+            Assert.AreEqual(code, statusCode);
         }
         catch (ApiException e)
         {
@@ -366,7 +382,9 @@ public class ApiClientResponseTests : ApiClientTestBase
         try
         {
             // Act
-            _ = await Client.GetSpriteAsync(MockServer.ServerUrl + "test.png");
+            var result = await Client.GetSpriteAsync("test.png");
+            Assert.IsNotNull(result.Sprite, "Expected to get a Sprite.");
+            Assert.AreEqual(code, result.StatusCode);
         }
         catch (ApiException e)
         {
@@ -398,10 +416,12 @@ public class ApiClientResponseTests : ApiClientTestBase
             try
             {
                 // Act
-                _ = await Client.GetCachedSpriteAsync(url, urlType: UrlType.Absolute);
+                var result = await Client.GetCachedSpriteAsync(url, urlType: UrlType.Absolute);
+                Assert.IsNotNull(result.Sprite, "Expected to get a Sprite.");
+                Assert.AreEqual(code, result.StatusCode);
 
-                var key = ApiClient.ComputeHash(url);
-                var filePath = Path.Combine(Client._cacheDir, $"{key}.png");
+                var key = CachedRequestHandling.ComputeHash(url);
+                var filePath = Path.Combine(Client.CacheDirectoryPath(), $"{key}.png");
                 if (!File.Exists(filePath))
                     throw new FileNotFoundException();
             }
@@ -433,7 +453,9 @@ public class ApiClientResponseTests : ApiClientTestBase
         try
         {
             // Act
-            _ = await Client.GetAudioClipAsync(MockServer.ServerUrl + "test.mp3");
+            var result = await Client.GetAudioClipAsync("test.mp3");
+            Assert.IsNotNull(result.AudioClip, "Expected to get an AudioClip.");
+            Assert.AreEqual(code, result.StatusCode);
         }
         catch (ApiException e)
         {
@@ -465,10 +487,12 @@ public class ApiClientResponseTests : ApiClientTestBase
             try
             {
                 // Act
-                _ = await Client.GetCachedAudioClipAsync(url, urlType: UrlType.Absolute);
+                var result = await Client.GetCachedAudioClipAsync(url, urlType: UrlType.Absolute);
+                Assert.IsNotNull(result.AudioClip, "Expected to get an AudioClip.");
+                Assert.AreEqual(code, result.StatusCode);
 
-                var key = ApiClient.ComputeHash(url);
-                var filePath = Path.Combine(Client._cacheDir, $"{key}.mp3");
+                var key = CachedRequestHandling.ComputeHash(url);
+                var filePath = Path.Combine(Client.CacheDirectoryPath(), $"{key}.mp3");
                 if (!File.Exists(filePath))
                     throw new FileNotFoundException();
             }
@@ -500,13 +524,14 @@ public class ApiClientResponseTests : ApiClientTestBase
         return responsePayload;
     }
 
-    private static void CheckAssertionsIfStatusCodeIndicatesContent(TestPayload responsePayload, TestPayload result,
-        int statusCode)
+    private static void CheckAssertionsIfStatusCodeIndicatesContent(TestPayload responsePayload,
+        ApiResponse<TestPayload> result, int statusCode)
     {
         if (statusCode == 204) return;
         Assert.NotNull(result);
-        Assert.AreEqual(result.Id, responsePayload.Id);
-        Assert.AreEqual(result.Name, responsePayload.Name);
+        Assert.AreEqual(result.Data.Id, responsePayload.Id);
+        Assert.AreEqual(result.Data.Name, responsePayload.Name);
+        Assert.AreEqual(result.StatusCode, statusCode);
     }
 
     private static void ThrowIfStatusCodeIsSuccess(int statusCode)

@@ -8,7 +8,7 @@ using ApiClientLib;
 using UnityEngine;
 using System;
 
-public class ApiClientSpriteConcurrentStressTests : ApiClientTestBase
+public class ApiClientResourceConcurrentStressTests : ApiClientTestBase
 {
     [UnityTest]
     public IEnumerator GetCachedSpriteAsync_MultipleDifferentUrlsConcurrently_DownloadsAllUniqueSprites() =>
@@ -22,21 +22,22 @@ public class ApiClientSpriteConcurrentStressTests : ApiClientTestBase
             MockServer.OnRequestReceived = _ => callCounter++;
 
             // Act: Fire requests for 5 entirely distinct image resources simultaneously
-            var tasks = new List<UniTask<Sprite>>();
+            var tasks = new List<UniTask<SpriteResponse>>();
             for (var i = 0; i < distinctUrlCount; i++)
             {
-                tasks.Add(Client.GetCachedSpriteAsync($"{MockServer.ServerUrl}image_{i}.png"));
+                tasks.Add(Client.GetCachedSpriteAsync($"image_{i}.png"));
             }
 
-            var sprites = await UniTask.WhenAll(tasks);
+            var spriteResponses = await UniTask.WhenAll(tasks);
 
             // Assert
             Assert.AreEqual(distinctUrlCount, callCounter, "Server should be hit exactly once for every unique URL.");
-            Assert.AreEqual(distinctUrlCount, sprites.Length,
+            Assert.AreEqual(distinctUrlCount, spriteResponses.Length,
                 "Should return a unique sprite instance for each successful download.");
-            for (var i = 0; i < sprites.Length; i++)
+            for (var i = 0; i < spriteResponses.Length; i++)
             {
-                Assert.IsNotNull(sprites[i], $"Sprite at index {i} should be successfully instantiated.");
+                Assert.IsNotNull(spriteResponses[i].Sprite,
+                    $"Sprite at index {i} should be successfully instantiated.");
             }
         });
 
@@ -52,21 +53,22 @@ public class ApiClientSpriteConcurrentStressTests : ApiClientTestBase
             MockServer.OnRequestReceived = _ => callCounter++;
 
             // Act: Fire requests for 5 entirely distinct audio clip resources simultaneously
-            var tasks = new List<UniTask<AudioClip>>();
+            var tasks = new List<UniTask<AudioClipResponse>>();
             for (var i = 0; i < distinctUrlCount; i++)
             {
-                tasks.Add(Client.GetCachedAudioClipAsync($"{MockServer.ServerUrl}image_{i}.mp3"));
+                tasks.Add(Client.GetCachedAudioClipAsync($"image_{i}.mp3"));
             }
 
-            var audioClips = await UniTask.WhenAll(tasks);
+            var audioClipResponses = await UniTask.WhenAll(tasks);
 
             // Assert
             Assert.AreEqual(distinctUrlCount, callCounter, "Server should be hit exactly once for every unique URL.");
-            Assert.AreEqual(distinctUrlCount, audioClips.Length,
+            Assert.AreEqual(distinctUrlCount, audioClipResponses.Length,
                 "Should return a unique AudioClip instance for each successful download.");
-            for (var i = 0; i < audioClips.Length; i++)
+            for (var i = 0; i < audioClipResponses.Length; i++)
             {
-                Assert.IsNotNull(audioClips[i], $"AudioClip at index {i} should be successfully instantiated.");
+                Assert.IsNotNull(audioClipResponses[i].AudioClip,
+                    $"AudioClip at index {i} should be successfully instantiated.");
             }
         });
 
@@ -81,7 +83,7 @@ public class ApiClientSpriteConcurrentStressTests : ApiClientTestBase
             // Act & Assert
             try
             {
-                await Client.GetSpriteAsync(MockServer.ServerUrl + "empty.png");
+                await Client.GetSpriteAsync("empty.png");
                 Assert.Fail("Expected an empty texture payload to throw a BadSpriteException.");
             }
             catch (BadSpriteException)
@@ -104,7 +106,7 @@ public class ApiClientSpriteConcurrentStressTests : ApiClientTestBase
             // Act & Assert
             try
             {
-                await Client.GetAudioClipAsync(MockServer.ServerUrl + "empty.mp3");
+                await Client.GetAudioClipAsync("empty.mp3");
                 Assert.Fail("Expected an empty audio clip payload to throw a BadAudioClipException.");
             }
             catch (BadAudioClipException)
@@ -124,7 +126,7 @@ public class ApiClientSpriteConcurrentStressTests : ApiClientTestBase
             // Act & Assert
             try
             {
-                await Client.GetSpriteAsync(MockServer.ServerUrl + "nocontent.png");
+                await Client.GetSpriteAsync("nocontent.png");
                 Assert.Fail("Expected 204 No Content response to throw an exception.");
             }
             catch (ApiException e)
@@ -148,7 +150,7 @@ public class ApiClientSpriteConcurrentStressTests : ApiClientTestBase
             // Act & Assert
             try
             {
-                await Client.GetAudioClipAsync(MockServer.ServerUrl + "nocontent.mp3");
+                await Client.GetAudioClipAsync("nocontent.mp3");
                 Assert.Fail("Expected 204 No Content response to throw an exception.");
             }
             catch (ApiException e)

@@ -2,7 +2,7 @@ using System;
 
 namespace ApiClientLib
 {
-    public class InvalidUrlException : Exception
+    public sealed class InvalidUrlException : Exception
     {
         public string Url { get; }
         public string BaseUrl { get; }

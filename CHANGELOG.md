@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0]
+
+### Added
+- `OnRequestCompleted` event on `IApiClient` — triggers whenever an HTTP request completes (successfully or with an error), passing a detailed `ApiEventData` payload.
+- `InstanceID` property on `IApiClient` — a unique integer ID generated for each client instance to help correlate logs and events.
+- `ApiClientLoggerWindow` Editor window — a centralized graphical logging console inside the Unity Editor for inspecting and tracking all API requests, headers, bodies, response times, status codes, and exceptions.
+- `ArgumentNullException` validation and documentation on all public API methods when passing a `null` URL or key.
+
+### Changed
+- **Internal Refactoring:** Extracted client core logic into separate manager classes (`BaseUrlManager`, `CacheManager`, and `HeaderManager`) and static handlers (`JsonRequestHandling`, `SpriteRequestHandling`, `AudioClipRequestHandling`, `CachedRequestHandling`, `UrlValidation`, and `Logging`) to improve modularity and clean up `ApiClient.cs`.
+- **Audio Clip Error Handling:** Standardized error behavior when requesting audio clips; `GetAudioClipAsync` and `GetCachedAudioClipAsync` now throw an `InvalidUrlException` if the request URL does not contain a file extension.
+- **Cache Invalidation:** Updated the `InvalidateCacheAsync` signature in the `IApiClient` interface to have a default parameter value (`CancellationToken ct = default`) to match the concrete class.
+
+### Breaking Changes
+- **Interface Signature Modifications:** Added `InstanceID` property and `OnRequestCompleted` event callback to the `IApiClient` interface. Custom mocks or third-party implementations of `IApiClient` must implement these new members to compile.
+- **Return Type Changes on Request Methods:**
+  - Fire-and-forget REST calls (`GetAsync`, `PostAsync`, `PutAsync`, `PatchAsync`, `DeleteAsync`) now return `UniTask<int>` (representing the HTTP status code) instead of `UniTask`.
+  - Generic deserialized responses (`GetAsync<T>`, `PostAsync<T>`, `PutAsync<T>`, `PatchAsync<T>`, `DeleteAsync<T>`) now return `UniTask<ApiResponse<T>>` instead of `UniTask<T>`. Access the deserialized model via `response.Data` and the status code via `response.StatusCode`.
+  - Sprite download methods (`GetSpriteAsync`, `GetCachedSpriteAsync`) now return `UniTask<SpriteResponse>` instead of `UniTask<Sprite>`. Access the sprite via `response.Sprite`.
+  - Audio clip download methods (`GetAudioClipAsync`, `GetCachedAudioClipAsync`) now return `UniTask<AudioClipResponse>` instead of `UniTask<AudioClip>`. Access the clip via `response.AudioClip`.
+- **Audio Request URL Constraints:** Both `GetAudioClipAsync` and `GetCachedAudioClipAsync` now strictly validate the presence of a file extension in the URL parameter. Calls using URLs without file extensions will now throw an `InvalidUrlException` immediately.
+
 ## [1.1.0]
 
 ### Added

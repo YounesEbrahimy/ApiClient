@@ -4,6 +4,7 @@ using System.Collections;
 using NUnit.Framework;
 using ApiClientLib;
 using System.Text;
+using System;
 
 [TestFixture]
 public class ApiClientUrlTypeTests : ApiClientTestBase
@@ -16,10 +17,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 ServerFromStringResponse,
-                Client.GetAsync(
+                () => Client.GetAsync(
                     type == UrlType.Absolute ? MockServer.ServerUrl + ServerRelativePath : ServerRelativePath,
                     urlType: type),
                 ServerRelativePath
@@ -34,10 +34,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 ServerFromStringResponse,
-                Client.GetAsync<string>(
+                () => Client.GetAsync<string>(
                     type == UrlType.Absolute ? MockServer.ServerUrl + ServerRelativePath : ServerRelativePath,
                     urlType: type),
                 ServerRelativePath
@@ -52,10 +51,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 ServerFromStringResponse,
-                Client.PostAsync(
+                () => Client.PostAsync(
                     type == UrlType.Absolute ? MockServer.ServerUrl + ServerRelativePath : ServerRelativePath,
                     DummyRequestBody, urlType: type),
                 ServerRelativePath
@@ -70,10 +68,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 ServerFromStringResponse,
-                Client.PostAsync<string>(
+                () => Client.PostAsync<string>(
                     type == UrlType.Absolute ? MockServer.ServerUrl + ServerRelativePath : ServerRelativePath,
                     DummyRequestBody, urlType: type),
                 ServerRelativePath
@@ -88,10 +85,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 ServerFromStringResponse,
-                Client.PutAsync(
+                () => Client.PutAsync(
                     type == UrlType.Absolute ? MockServer.ServerUrl + ServerRelativePath : ServerRelativePath,
                     DummyRequestBody, urlType: type),
                 ServerRelativePath
@@ -106,10 +102,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 ServerFromStringResponse,
-                Client.PutAsync<string>(
+                () => Client.PutAsync<string>(
                     type == UrlType.Absolute ? MockServer.ServerUrl + ServerRelativePath : ServerRelativePath,
                     DummyRequestBody, urlType: type),
                 ServerRelativePath
@@ -124,10 +119,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 ServerFromStringResponse,
-                Client.PatchAsync(
+                () => Client.PatchAsync(
                     type == UrlType.Absolute ? MockServer.ServerUrl + ServerRelativePath : ServerRelativePath,
                     DummyRequestBody, urlType: type),
                 ServerRelativePath
@@ -142,10 +136,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 ServerFromStringResponse,
-                Client.PatchAsync<string>(
+                () => Client.PatchAsync<string>(
                     type == UrlType.Absolute ? MockServer.ServerUrl + ServerRelativePath : ServerRelativePath,
                     DummyRequestBody, urlType: type),
                 ServerRelativePath
@@ -160,10 +153,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 ServerFromStringResponse,
-                Client.DeleteAsync(
+                () => Client.DeleteAsync(
                     type == UrlType.Absolute ? MockServer.ServerUrl + ServerRelativePath : ServerRelativePath,
                     urlType: type),
                 ServerRelativePath
@@ -178,10 +170,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 ServerFromStringResponse,
-                Client.DeleteAsync<string>(
+                () => Client.DeleteAsync<string>(
                     type == UrlType.Absolute ? MockServer.ServerUrl + ServerRelativePath : ServerRelativePath,
                     urlType: type),
                 ServerRelativePath
@@ -196,10 +187,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 RealPngBytes,
-                Client.GetSpriteAsync(
+                () => Client.GetSpriteAsync(
                     type == UrlType.Absolute
                         ? MockServer.ServerUrl + ServerRelativePathSprite
                         : ServerRelativePathSprite,
@@ -216,10 +206,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 RealPngBytes,
-                Client.GetCachedSpriteAsync(
+                () => Client.GetCachedSpriteAsync(
                     type == UrlType.Absolute
                         ? MockServer.ServerUrl + ServerRelativePathSprite
                         : ServerRelativePathSprite,
@@ -236,10 +225,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 RealMp3Bytes,
-                Client.GetAudioClipAsync(
+                () => Client.GetAudioClipAsync(
                     type == UrlType.Absolute
                         ? MockServer.ServerUrl + ServerRelativePathAudioClip
                         : ServerRelativePathAudioClip,
@@ -256,10 +244,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         {
             await TestRequestUrlType(
                 MockServer,
-                Client,
                 type,
                 RealMp3Bytes,
-                Client.GetCachedAudioClipAsync(
+                () => Client.GetCachedAudioClipAsync(
                     type == UrlType.Absolute
                         ? MockServer.ServerUrl + ServerRelativePathAudioClip
                         : ServerRelativePathAudioClip,
@@ -276,8 +263,8 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
     private const string ServerRelativePathAudioClip = "api/test.mp3";
     private const string DummyRequestBody = "DummyRequestBody";
 
-    private async UniTask TestRequestUrlType(MockHttpServer server, ApiClient client, UrlType urlType,
-        byte[] serverResponse, UniTask act, string relativeUrl)
+    private async UniTask TestRequestUrlType(MockHttpServer server, UrlType urlType, byte[] serverResponse,
+        Func<UniTask> requestFunc, string relativeUrl)
     {
         // Arrange
         string requestPath = null;
@@ -286,11 +273,9 @@ public class ApiClientUrlTypeTests : ApiClientTestBase
         server.OnRequestReceived = req => { requestPath = req.Url.AbsoluteUri; };
 
         var isRelative = urlType == UrlType.Relative;
-        if (isRelative)
-            client.SetBaseUrl(server.ServerUrl);
 
         // Act
-        await act;
+        await requestFunc();
 
         // Assert
         Assert.IsNotNull(requestPath, "Server spy hook was never triggered.");

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 using UnityEngine;
+using System;
 
 namespace ApiClientLib
 {
@@ -34,6 +35,26 @@ namespace ApiClientLib
     /// </remarks>
     public interface IApiClient
     {
+        // ── Instance ID ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Gets the unique integer identifier for this client instance.
+        /// Useful for correlating events and logs from a specific client.
+        /// </summary>
+        int InstanceID { get; }
+
+        // ── Events ────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Event triggered when any HTTP request completes, either successfully or with an error.
+        /// </summary>
+        /// <remarks>
+        /// This event is useful for global logging, analytics, debugging, or custom response handling.
+        /// The event argument <see cref="ApiEventData"/> provides rich metadata about the request,
+        /// including URLs, headers, duration, status codes, and any exceptions occurred.
+        /// </remarks>
+        public event Action<ApiEventData> OnRequestCompleted;
+
         // ── Base URL ──────────────────────────────────────────────────────────────
 
         /// <summary>
@@ -66,13 +87,16 @@ namespace ApiClientLib
         /// Persistent headers are automatically included in every outgoing request.
         /// Modify them via <see cref="AddHeader"/>, <see cref="RemoveHeader"/>, or <see cref="ClearHeaders"/>.
         /// </remarks>
-        Dictionary<string, string> Headers { get; }
+        IReadOnlyDictionary<string, string> Headers { get; }
 
         /// <summary>
         /// Adds or overwrites a persistent header that will be sent with every subsequent request.
         /// </summary>
         /// <param name="key">The header name (e.g. <c>"Authorization"</c>).</param>
         /// <param name="value">The header value (e.g. <c>"Bearer &lt;token&gt;"</c>).</param>
+        /// <exception cref="System.ArgumentNullException">
+        /// Thrown if <paramref name="key"/> is <c>null</c>.
+        /// </exception>
         void AddHeader(string key, string value);
 
         /// <summary>
@@ -89,10 +113,13 @@ namespace ApiClientLib
         // ── Cache Control ─────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Deletes the cache folder and its contents, and resets the indexes.
+        /// Deletes the contents of the cache folder, and resets the indexes.
         /// </summary>
         /// <param name="ct">Token used to cancel the operation.</param>
-        UniTask InvalidateCacheAsync(CancellationToken ct);
+        /// <exception cref="System.OperationCanceledException">
+        /// Thrown if the cancellation token <paramref name="ct"/> is canceled.
+        /// </exception>
+        UniTask InvalidateCacheAsync(CancellationToken ct = default);
 
         // ── GET ───────────────────────────────────────────────────────────────────
 
@@ -102,7 +129,7 @@ namespace ApiClientLib
         /// <param name="url">
         /// The relative or absolute endpoint URL. Relative paths are appended to <see cref="BaseUrl"/>.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">
@@ -111,13 +138,15 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
+        /// <returns>The HTTP status code of the response.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response.</exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask GetAsync(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<int> GetAsync(string url, IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         /// <summary>
         /// Sends an HTTP GET request and deserializes the JSON response body to <typeparamref name="T"/>.
@@ -129,7 +158,7 @@ namespace ApiClientLib
         /// <param name="url">
         /// The relative or absolute endpoint URL. Relative paths are appended to <see cref="BaseUrl"/>.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">
@@ -138,18 +167,21 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>The response body deserialized as <typeparamref name="T"/>.</returns>
+        /// <returns>An <see cref="ApiResponse{T}"/> containing the HTTP status code and the deserialized response body of type <typeparamref name="T"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">
         /// Thrown on a non-2xx HTTP response, or if the server returns a body-less status code
         /// (e.g. 204 No Content) when a response body is expected.
         /// </exception>
-        /// <exception cref="JsonException">Thrown if the response body cannot be deserialized into <typeparamref name="T"/>.</exception>
+        /// <exception cref="JsonException">
+        /// Thrown if the response is empty/null, or if the response body cannot be deserialized into <typeparamref name="T"/>.
+        /// </exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask<T> GetAsync<T>(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<ApiResponse<T>> GetAsync<T>(string url, IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         // ── POST ──────────────────────────────────────────────────────────────────
 
@@ -163,7 +195,7 @@ namespace ApiClientLib
         /// The request payload. Serialized to JSON via Newtonsoft.Json before sending.
         /// Pass <c>null</c> to send a body-less request.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">
@@ -172,14 +204,16 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
+        /// <returns>The HTTP status code of the response.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response.</exception>
         /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized to JSON.</exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask PostAsync(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<int> PostAsync(string url, object body, IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         /// <summary>
         /// Sends an HTTP POST request with a JSON-serialized body and deserializes the JSON response to <typeparamref name="T"/>.
@@ -195,7 +229,7 @@ namespace ApiClientLib
         /// The request payload. Serialized to JSON via Newtonsoft.Json before sending.
         /// Pass <c>null</c> to send a body-less request.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">
@@ -204,18 +238,22 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>The response body deserialized as <typeparamref name="T"/>.</returns>
+        /// <returns>An <see cref="ApiResponse{T}"/> containing the HTTP status code and the deserialized response body of type <typeparamref name="T"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">
         /// Thrown on a non-2xx HTTP response, or if the server returns a body-less status code
         /// when a response body is expected.
         /// </exception>
-        /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized, or if the response cannot be deserialized into <typeparamref name="T"/>.</exception>
+        /// <exception cref="JsonException">
+        /// Thrown if <paramref name="body"/> cannot be serialized, if the response is empty/null, or if the response cannot be deserialized into <typeparamref name="T"/>.
+        /// </exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask<T> PostAsync<T>(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<ApiResponse<T>> PostAsync<T>(string url, object body,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         // ── PUT ───────────────────────────────────────────────────────────────────
 
@@ -229,7 +267,7 @@ namespace ApiClientLib
         /// The request payload. Serialized to JSON via Newtonsoft.Json before sending.
         /// Pass <c>null</c> to send a body-less request.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">
@@ -238,14 +276,16 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
+        /// <returns>The HTTP status code of the response.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response.</exception>
         /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized to JSON.</exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask PutAsync(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<int> PutAsync(string url, object body, IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         /// <summary>
         /// Sends an HTTP PUT request with a JSON-serialized body and deserializes the JSON response to <typeparamref name="T"/>.
@@ -261,7 +301,7 @@ namespace ApiClientLib
         /// The request payload. Serialized to JSON via Newtonsoft.Json before sending.
         /// Pass <c>null</c> to send a body-less request.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">
@@ -270,18 +310,22 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>The response body deserialized as <typeparamref name="T"/>.</returns>
+        /// <returns>An <see cref="ApiResponse{T}"/> containing the HTTP status code and the deserialized response body of type <typeparamref name="T"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">
         /// Thrown on a non-2xx HTTP response, or if the server returns a body-less status code
         /// when a response body is expected.
         /// </exception>
-        /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized, or if the response cannot be deserialized into <typeparamref name="T"/>.</exception>
+        /// <exception cref="JsonException">
+        /// Thrown if <paramref name="body"/> cannot be serialized, if the response is empty/null, or if the response cannot be deserialized into <typeparamref name="T"/>.
+        /// </exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask<T> PutAsync<T>(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<ApiResponse<T>> PutAsync<T>(string url, object body,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         // ── PATCH ─────────────────────────────────────────────────────────────────
 
@@ -295,7 +339,7 @@ namespace ApiClientLib
         /// The request payload. Serialized to JSON via Newtonsoft.Json before sending.
         /// Pass <c>null</c> to send a body-less request.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">
@@ -304,14 +348,16 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
+        /// <returns>The HTTP status code of the response.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response.</exception>
         /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized to JSON.</exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask PatchAsync(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<int> PatchAsync(string url, object body, IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         /// <summary>
         /// Sends an HTTP PATCH request with a JSON-serialized body and deserializes the JSON response to <typeparamref name="T"/>.
@@ -327,7 +373,7 @@ namespace ApiClientLib
         /// The request payload. Serialized to JSON via Newtonsoft.Json before sending.
         /// Pass <c>null</c> to send a body-less request.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">
@@ -336,18 +382,22 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>The response body deserialized as <typeparamref name="T"/>.</returns>
+        /// <returns>An <see cref="ApiResponse{T}"/> containing the HTTP status code and the deserialized response body of type <typeparamref name="T"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">
         /// Thrown on a non-2xx HTTP response, or if the server returns a body-less status code
         /// when a response body is expected.
         /// </exception>
-        /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized, or if the response cannot be deserialized into <typeparamref name="T"/>.</exception>
+        /// <exception cref="JsonException">
+        /// Thrown if <paramref name="body"/> cannot be serialized, if the response is empty/null, or if the response cannot be deserialized into <typeparamref name="T"/>.
+        /// </exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask<T> PatchAsync<T>(string url, object body, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<ApiResponse<T>> PatchAsync<T>(string url, object body,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         // ── DELETE ────────────────────────────────────────────────────────────────
 
@@ -357,7 +407,7 @@ namespace ApiClientLib
         /// <param name="url">
         /// The relative or absolute endpoint URL. Relative paths are appended to <see cref="BaseUrl"/>.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">
@@ -366,13 +416,15 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
+        /// <returns>The HTTP status code of the response.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response.</exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask DeleteAsync(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<int> DeleteAsync(string url, IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         /// <summary>
         /// Sends an HTTP DELETE request and deserializes the JSON response body to <typeparamref name="T"/>.
@@ -384,7 +436,7 @@ namespace ApiClientLib
         /// <param name="url">
         /// The relative or absolute endpoint URL. Relative paths are appended to <see cref="BaseUrl"/>.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">
@@ -393,18 +445,21 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>The response body deserialized as <typeparamref name="T"/>.</returns>
+        /// <returns>An <see cref="ApiResponse{T}"/> containing the HTTP status code and the deserialized response body of type <typeparamref name="T"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">
         /// Thrown on a non-2xx HTTP response, or if the server returns a body-less status code
         /// when a response body is expected.
         /// </exception>
-        /// <exception cref="JsonException">Thrown if the response cannot be deserialized into <typeparamref name="T"/>.</exception>
+        /// <exception cref="JsonException">
+        /// Thrown if the response is empty/null, or if the response cannot be deserialized into <typeparamref name="T"/>.
+        /// </exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask<T> DeleteAsync<T>(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<ApiResponse<T>> DeleteAsync<T>(string url, IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         // ── Sprite ────────────────────────────────────────────────────────────────
 
@@ -417,21 +472,24 @@ namespace ApiClientLib
         /// The response is not cached; use <see cref="GetCachedSpriteAsync"/> for repeated access to the same URL.
         /// </remarks>
         /// <param name="url">Relative or Absolute URL of the image resource.</param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">Optional query parameters appended to the URL.</param>
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>A <see cref="Sprite"/> created from the downloaded image data.</returns>
+        /// <returns>A <see cref="SpriteResponse"/> containing the HTTP status code and the created <see cref="Sprite"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
+        /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response or a body-less response.</exception>
         /// <exception cref="BadSpriteException">Thrown if the downloaded data cannot be decoded into a valid texture.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask<Sprite> GetSpriteAsync(string url, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<SpriteResponse> GetSpriteAsync(string url,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         /// <summary>
         /// Downloads an image and returns it as a Unity <see cref="Sprite"/>, serving from a local disk
@@ -456,7 +514,7 @@ namespace ApiClientLib
         /// Number of days a cached entry is considered valid before a fresh download is triggered.
         /// Defaults to <c>14</c>.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers used when a network download is required.
         /// Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
@@ -464,14 +522,17 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request or cache I/O.</param>
-        /// <returns>A <see cref="Sprite"/> either loaded from cache or freshly downloaded.</returns>
+        /// <returns>A <see cref="SpriteResponse"/> containing the HTTP status code (or -1 if served from cache) and the created <see cref="Sprite"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
+        /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response or a body-less response during download.</exception>
         /// <exception cref="BadSpriteException">Thrown if the downloaded or cached data cannot be decoded into a valid texture.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask<Sprite> GetCachedSpriteAsync(string url, int cacheDays = 14, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<SpriteResponse> GetCachedSpriteAsync(string url, int cacheDays = 14,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         // ── AudioClip ─────────────────────────────────────────────────────────────
 
@@ -487,7 +548,7 @@ namespace ApiClientLib
         /// <c>.aac</c> → <see cref="AudioType.ACC"/>,
         /// <c>.wav</c> → <see cref="AudioType.WAV"/>,
         /// <c>.aiff</c> / <c>.aif</c> → <see cref="AudioType.AIFF"/>.
-        /// If the extension is unrecognised, <see cref="AudioType.UNKNOWN"/> is passed to
+        /// If the extension is unrecognized, <see cref="AudioType.UNKNOWN"/> is passed to
         /// <c>UnityWebRequestMultimedia</c>, which may or may not succeed depending on the platform.
         /// </para>
         /// <para>
@@ -499,21 +560,26 @@ namespace ApiClientLib
         /// The audio format hint. Pass <see cref="AudioType.UNKNOWN"/> to let the client auto-detect
         /// from the URL file extension. Defaults to <see cref="AudioType.UNKNOWN"/>.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers. Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
         /// <param name="queryParams">Optional query parameters appended to the URL.</param>
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>An <see cref="AudioClip"/> loaded from the downloaded audio data.</returns>
+        /// <returns>An <see cref="AudioClipResponse"/> containing the HTTP status code and the loaded <see cref="AudioClip"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
+        /// <exception cref="InvalidUrlException">
+        /// Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address, or if it does not contain a file extension.
+        /// </exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response or a body-less response.</exception>
         /// <exception cref="BadAudioClipException">Thrown if the downloaded data cannot be decoded into a valid <see cref="AudioClip"/>.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask<AudioClip> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
-            Dictionary<string, string> headers = null, Dictionary<string, string> queryParams = null,
-            UrlType urlType = UrlType.Relative, int timeout = 10, CancellationToken ct = default);
+        UniTask<AudioClipResponse> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
+            IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
 
         /// <summary>
         /// Downloads an audio file and returns it as a Unity <see cref="AudioClip"/>, serving from a local
@@ -521,7 +587,7 @@ namespace ApiClientLib
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The URL <b>must</b> include a recognisable file extension (e.g. <c>.mp3</c>, <c>.wav</c>).
+        /// The URL <b>must</b> include a recognizable file extension (e.g. <c>.mp3</c>, <c>.wav</c>).
         /// The extension is used both to name the cache file on disk and, when
         /// <paramref name="audioType"/> is <see cref="AudioType.UNKNOWN"/>, to determine the audio format.
         /// An <see cref="InvalidUrlException"/> is thrown immediately if no extension can be extracted.
@@ -549,7 +615,7 @@ namespace ApiClientLib
         /// Number of days a cached entry is considered valid before a fresh download is triggered.
         /// Defaults to <c>14</c>.
         /// </param>
-        /// <param name="headers">
+        /// <param name="customHeaders">
         /// Optional per-request headers used when a network download is required.
         /// Merged with persistent headers; these take precedence on key conflicts.
         /// </param>
@@ -557,17 +623,18 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request or cache I/O.</param>
-        /// <returns>An <see cref="AudioClip"/> either loaded from cache or freshly downloaded.</returns>
+        /// <returns>An <see cref="AudioClipResponse"/> containing the HTTP status code (or -1 if served from cache) and the loaded <see cref="AudioClip"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="InvalidUrlException">
-        /// Thrown immediately if <paramref name="url"/> does not contain a file extension.
+        /// Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address, or if it does not contain a file extension.
         /// </exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response during download.</exception>
         /// <exception cref="BadAudioClipException">Thrown if the cached or downloaded data cannot be decoded into a valid <see cref="AudioClip"/>.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
-        UniTask<AudioClip> GetCachedAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
-            int cacheDays = 14, Dictionary<string, string> headers = null,
-            Dictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative, int timeout = 10,
-            CancellationToken ct = default);
+        UniTask<AudioClipResponse> GetCachedAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
+            int cacheDays = 14, IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
+            int timeout = 10, CancellationToken ct = default);
     }
 }

@@ -49,7 +49,7 @@
 2. Click the **+** button → **Add package from git URL ...**
 3. Enter:
    ```
-   https://github.com/YounesEbrahimy/ApiClient.git?path=/Assets/ApiClient/#1.1.0
+   https://github.com/YounesEbrahimy/ApiClient.git?path=/Assets/ApiClient/#1.5.0
    ```
 
 ### Manual
@@ -70,7 +70,9 @@ IApiClient client = new ApiClient("https://api.example.com");
 client.AddHeader("Authorization", "Bearer your-token-here");
 
 // Make a typed GET request
-var user = await client.GetAsync<UserDto>("users/42");
+var response = await client.GetAsync<UserDto>("users/42");
+var user = response.Data;
+Debug.Log($"User loaded: {user.Name} (Status: {response.StatusCode})");
 ```
 
 ---
@@ -144,6 +146,31 @@ client.ClearHeaders();
 
 ---
 
+### Properties & Events
+
+#### `int InstanceID { get; }`
+
+A unique integer identifier for the `ApiClient` instance. Useful for correlating events and logs.
+
+#### `event Action<ApiEventData> OnRequestCompleted`
+
+Event triggered when any HTTP request completes (successfully or with an error). The event payload <see cref="ApiEventData"/> contains detailed information about URLs, headers, payload, status codes, duration, and exceptions. (Note: For cache hits, the `StatusCode` is `-1` and the request duration is near 0.)
+
+> ⚠️ **Performance & Compilation Notice:** This event only fires when running inside the Unity Editor or when the `APICLIENT_LOGGING_ENABLED` custom compiler symbol is defined. Because capturing full request/response payloads, headers, and metadata carries a performance cost, it should be reserved for debugging, custom profiling, or dedicated log monitoring.
+
+```csharp
+client.OnRequestCompleted += (ApiEventData eventData) =>
+{
+    Debug.Log($"[{eventData.Method}] {eventData.URL} completed in {eventData.Duration}s. Success: {eventData.Success}, Status: {eventData.StatusCode}");
+    if (!eventData.Success && eventData.Exception != null)
+    {
+        Debug.LogError($"Error: {eventData.ErrorMessage}");
+    }
+};
+```
+
+---
+
 ### Cache Control
 
 #### `UniTask InvalidateCacheAsync(CancellationToken ct = default)`
@@ -169,33 +196,36 @@ All HTTP methods share these common parameters:
 | `timeout` | `int` | `10` | Request timeout in seconds |
 | `ct` | `CancellationToken` | `default` | Token to cancel the request |
 
-Body-returning overloads additionally accept a type parameter `T`. Passing `string` as `T` returns the raw response text without JSON deserialization.
+All request methods return wrapper classes containing the response details. Fire-and-forget methods return `UniTask<int>` where the `int` represents the HTTP status code. Generic response-returning methods return `UniTask<ApiResponse<T>>` containing both the status code and the deserialized body. Passing `string` as `T` returns the raw response text in `ApiResponse<string>.Data` without JSON deserialization.
 
 ---
 
 #### GET
 
 ```csharp
-// Fire-and-forget (response body discarded)
-UniTask GetAsync(string url, ...)
+// Fire-and-forget (discards response body, returns status code)
+UniTask<int> GetAsync(string url, ...)
 
-// Returns deserialized response body
-UniTask<T> GetAsync<T>(string url, ...)
+// Returns response wrapper with deserialized response body
+UniTask<ApiResponse<T>> GetAsync<T>(string url, ...)
 ```
 
 ```csharp
 // Simple typed GET
-var product = await client.GetAsync<ProductDto>("products/7");
+var response = await client.GetAsync<ProductDto>("products/7");
+var product = response.Data;
 
 // With query parameters
-var results = await client.GetAsync<List<ProductDto>>("products", queryParams: new Dictionary<string, string>
+var responseList = await client.GetAsync<List<ProductDto>>("products", queryParams: new Dictionary<string, string>
 {
     { "category", "electronics" },
     { "page", "1" }
 });
+var results = responseList.Data;
 
 // Raw string response
-var raw = await client.GetAsync<string>("health");
+var responseRaw = await client.GetAsync<string>("health");
+var raw = responseRaw.Data;
 ```
 
 ---
@@ -203,11 +233,11 @@ var raw = await client.GetAsync<string>("health");
 #### POST
 
 ```csharp
-// Fire-and-forget
-UniTask PostAsync(string url, object body, ...)
+// Fire-and-forget (returns status code)
+UniTask<int> PostAsync(string url, object body, ...)
 
-// Returns deserialized response body
-UniTask<T> PostAsync<T>(string url, object body, ...)
+// Returns response wrapper with deserialized response body
+UniTask<ApiResponse<T>> PostAsync<T>(string url, object body, ...)
 ```
 
 The `body` is serialized to JSON automatically. Pass `null` for a body-less request.
@@ -215,11 +245,12 @@ The `body` is serialized to JSON automatically. Pass `null` for a body-less requ
 ```csharp
 var newUser = new CreateUserRequest { Name = "Alice", Email = "alice@example.com" };
 
-// No response body expected
-await client.PostAsync("users", newUser);
+// No response body expected (returns status code)
+int statusCode = await client.PostAsync("users", newUser);
 
 // With response body
-var created = await client.PostAsync<UserDto>("users", newUser);
+var response = await client.PostAsync<UserDto>("users", newUser);
+var created = response.Data;
 Console.WriteLine(created.Id);
 ```
 
@@ -228,13 +259,14 @@ Console.WriteLine(created.Id);
 #### PUT
 
 ```csharp
-UniTask PutAsync(string url, object body, ...)
-UniTask<T> PutAsync<T>(string url, object body, ...)
+UniTask<int> PutAsync(string url, object body, ...)
+UniTask<ApiResponse<T>> PutAsync<T>(string url, object body, ...)
 ```
 
 ```csharp
 var update = new UpdateUserRequest { Name = "Alice Smith" };
-var updated = await client.PutAsync<UserDto>("users/42", update);
+var response = await client.PutAsync<UserDto>("users/42", update);
+var updated = response.Data;
 ```
 
 ---
@@ -242,14 +274,14 @@ var updated = await client.PutAsync<UserDto>("users/42", update);
 #### PATCH
 
 ```csharp
-UniTask PatchAsync(string url, object body, ...)
-UniTask<T> PatchAsync<T>(string url, object body, ...)
+UniTask<int> PatchAsync(string url, object body, ...)
+UniTask<ApiResponse<T>> PatchAsync<T>(string url, object body, ...)
 ```
 
 ```csharp
-// Partial update — only send the fields that changed
+// Partial update — only send the fields that changed (returns status code)
 var patch = new { Email = "new@example.com" };
-await client.PatchAsync("users/42", patch);
+int statusCode = await client.PatchAsync("users/42", patch);
 ```
 
 ---
@@ -257,36 +289,39 @@ await client.PatchAsync("users/42", patch);
 #### DELETE
 
 ```csharp
-UniTask DeleteAsync(string url, ...)
-UniTask<T> DeleteAsync<T>(string url, ...)
+UniTask<int> DeleteAsync(string url, ...)
+UniTask<ApiResponse<T>> DeleteAsync<T>(string url, ...)
 ```
 
 ```csharp
-// No response body
-await client.DeleteAsync("users/42");
+// No response body (returns status code)
+int statusCode = await client.DeleteAsync("users/42");
 
 // With response body (e.g. API returns the deleted resource)
-var deleted = await client.DeleteAsync<UserDto>("users/42");
+var response = await client.DeleteAsync<UserDto>("users/42");
+var deleted = response.Data;
 ```
 
 ---
 
 ### Asset Downloads
 
-#### `UniTask<Sprite> GetSpriteAsync(string url, ...)`
+#### `UniTask<SpriteResponse> GetSpriteAsync(string url, ...)`
 
-Downloads an image and returns it as a Unity `Sprite`. The sprite is created with a centered pivot (`0.5, 0.5`) covering the full texture dimensions. The response is not cached — use `GetCachedSpriteAsync` if the same URL will be accessed more than once.
+Downloads an image and returns it as a `SpriteResponse` containing the `Sprite`. The sprite is created with a centered pivot (`0.5, 0.5`) covering the full texture dimensions. The response is not cached — use `GetCachedSpriteAsync` if the same URL will be accessed more than once.
 
 ```csharp
-var sprite = await client.GetSpriteAsync("https://cdn.example.com/avatar/42.png");
-avatarImage.sprite = sprite;
+var response = await client.GetSpriteAsync("https://cdn.example.com/avatar/42.png");
+avatarImage.sprite = response.Sprite;
 ```
 
 ---
 
-#### `UniTask<Sprite> GetCachedSpriteAsync(string url, int cacheDays = 14, ...)`
+#### `UniTask<SpriteResponse> GetCachedSpriteAsync(string url, int cacheDays = 14, ...)`
 
-Same as `GetSpriteAsync` but stores the downloaded image to disk as a PNG and serves it from the local cache on subsequent calls, avoiding redundant network requests.
+Same as `GetSpriteAsync` but stores the downloaded image to disk as a PNG and serves it from the local cache on subsequent calls, avoiding redundant network requests. 
+
+> **Cache Hit Status:** On a cache hit, no network request is sent and the returned `SpriteResponse.StatusCode` is `-1`.
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -296,17 +331,19 @@ Cache files are stored in `Application.persistentDataPath/api_client_cache/` usi
 
 ```csharp
 // First call downloads and caches; subsequent calls within 14 days load from disk
-var sprite = await client.GetCachedSpriteAsync("https://cdn.example.com/avatar/42.png");
+var response = await client.GetCachedSpriteAsync("https://cdn.example.com/avatar/42.png");
+var sprite = response.Sprite;
 
 // Custom expiry
-var sprite = await client.GetCachedSpriteAsync("https://cdn.example.com/banner.png", cacheDays: 7);
+var responseCustom = await client.GetCachedSpriteAsync("https://cdn.example.com/banner.png", cacheDays: 7);
+var spriteCustom = responseCustom.Sprite;
 ```
 
 ---
 
-#### `UniTask<AudioClip> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN, ...)`
+#### `UniTask<AudioClipResponse> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN, ...)`
 
-Downloads an audio file and returns it as a Unity `AudioClip`. The response is not cached — use `GetCachedAudioClipAsync` for repeated access.
+Downloads an audio file and returns it as an `AudioClipResponse` containing the `AudioClip`. The response is not cached — use `GetCachedAudioClipAsync` for repeated access.
 
 When `audioType` is `AudioType.UNKNOWN` (the default), the format is auto-detected from the URL file extension:
 
@@ -320,30 +357,35 @@ When `audioType` is `AudioType.UNKNOWN` (the default), the format is auto-detect
 
 ```csharp
 // Auto-detect format from URL extension
-var clip = await client.GetAudioClipAsync("https://cdn.example.com/sfx/explosion.mp3");
+var response = await client.GetAudioClipAsync("https://cdn.example.com/sfx/explosion.mp3");
+var clip = response.AudioClip;
 
 // Explicit format
-var clip = await client.GetAudioClipAsync("https://cdn.example.com/music/theme", AudioType.OGGVORBIS);
+var responseTheme = await client.GetAudioClipAsync("https://cdn.example.com/music/theme", AudioType.OGGVORBIS);
+var clipTheme = responseTheme.AudioClip;
 ```
 
 ---
 
-#### `UniTask<AudioClip> GetCachedAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN, int cacheDays = 14, ...)`
+#### `UniTask<AudioClipResponse> GetCachedAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN, int cacheDays = 14, ...)`
 
 Same as `GetAudioClipAsync` but caches the raw audio bytes to disk. Subsequent calls within the expiry window load the clip from the local file, skipping the network entirely.
 
 > **Important:** The URL **must** include a file extension (e.g. `.mp3`, `.wav`). This is used to name the cache file and, when `audioType` is `UNKNOWN`, to detect the format. An `InvalidUrlException` is thrown immediately if no extension is found.
 
+> **Cache Hit Status:** On a cache hit, no network request is sent and the returned `AudioClipResponse.StatusCode` is `-1`.
+
 ```csharp
-var clip = await client.GetCachedAudioClipAsync("https://cdn.example.com/music/theme.ogg");
-audioSource.clip = clip;
+var response = await client.GetCachedAudioClipAsync("https://cdn.example.com/music/theme.ogg");
+audioSource.clip = response.AudioClip;
 audioSource.Play();
 
 // Custom cache duration
-var clip = await client.GetCachedAudioClipAsync(
+var responseClick = await client.GetCachedAudioClipAsync(
     "https://cdn.example.com/sfx/click.wav",
     cacheDays: 30
 );
+var clipClick = responseClick.AudioClip;
 ```
 
 ---
@@ -414,6 +456,44 @@ catch (OperationCanceledException)
     // Normal — object was destroyed or token was cancelled
 }
 ```
+
+---
+
+## 🖥️ Diagnostics & Logging (Unity Editor)
+
+ApiClient features a custom Unity Editor window to inspect and log all network activities.
+
+### ApiClient Logger Window
+
+To open the logger window in Unity, go to **Window → ApiClient → Logger**. This utility provides:
+- **Real-Time Logs**: View a list of all outgoing and incoming requests as they execute.
+  - **Visual Color-Coding**: Successful requests are colorless, failed requests appear red (displaying the thrown exception type badge at the end of the row), and cached requests appear blue.
+- **Advanced Filtering**:
+  - **Text Search**: Filter logs instantly by URL, request body, response body, or error messages.
+  - **Success/Fail State**: Filter by Success, Fail, or All requests.
+  - **Request Method**: Toggle visibility for individual HTTP methods (GET, POST, PUT, etc.) and asset methods (Sprite, AudioClip).
+  - **Status Code & Instance ID**: Filter logs by specific HTTP status codes (or `C` for cache hits) and isolate requests sent by a specific client instance ID.
+- **Interactive Log Inspector**: Click any log entry to expand it and inspect:
+  - Pretty-printed, indented JSON for both Request and Response body payloads.
+  - Formatted key-value lists for request headers, query parameters, and response headers.
+  - Rich exception type badges and detailed error message fields on failures.
+
+**Logger Window screenshots:**
+
+- Lists all captured requests, From all ApiClient instances.
+![Screenshot_01](images/LoggerWindow/LoggerWindow_SS_01.jpg)
+
+- Expanded view, clicking each row will expand it and shows full details.
+![Screenshot_02](images/LoggerWindow/LoggerWindow_SS_02.jpg)
+
+- Color coding failed requests, Along with a badge of the exception's type and error message.
+![Screenshot_03](images/LoggerWindow/LoggerWindow_SS_03.jpg)
+
+- Color coding cache hit requests, With special character "C" instead of status code.
+![Screenshot_04](images/LoggerWindow/LoggerWindow_SS_04.jpg)
+
+- Another example of an expanded failed request.
+![Screenshot_05](images/LoggerWindow/LoggerWindow_SS_05.jpg)
 
 ---
 

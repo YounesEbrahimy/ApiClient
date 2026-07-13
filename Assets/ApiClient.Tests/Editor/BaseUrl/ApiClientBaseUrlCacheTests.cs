@@ -26,8 +26,8 @@ public class ApiClientBaseUrlCacheTests : ApiClientTestBase
 
             // Assertions: Must have downloaded the Sprite only once, and Only one image must exist in cache folder
             Assert.AreEqual(1, requestCalls, "Server must have been hit exactly once.");
-            Assert.IsTrue(Directory.Exists(Client._cacheDir), "Cache folder should have been created.");
-            Assert.AreEqual(1, Directory.GetFiles(Client._cacheDir, "*.png").Length,
+            Assert.IsTrue(Directory.Exists(Client.CacheDirectoryPath()), "Cache folder should have been created.");
+            Assert.AreEqual(1, Directory.GetFiles(Client.CacheDirectoryPath(), "*.png").Length,
                 "Client should have cached exactly one .png file.");
         });
 
@@ -40,18 +40,17 @@ public class ApiClientBaseUrlCacheTests : ApiClientTestBase
             MockServer.ResponseStatusCode = 200;
             MockServer.ResponseBytes = RealMp3Bytes;
             MockServer.OnRequestReceived = _ => requestCalls++;
-            var relativeUrl = "test.mp3";
+            const string relativeUrl = "test.mp3";
 
             // Act: Download an AudioCLip from the same URL, once using absolute URL and then using relative URL
             var clip1 = await Client.GetCachedAudioClipAsync(MockServer.ServerUrl + relativeUrl,
                 urlType: UrlType.Absolute);
-            Client.SetBaseUrl(MockServer.ServerUrl);
             var clip2 = await Client.GetCachedAudioClipAsync(relativeUrl, urlType: UrlType.Relative);
 
             // Assertions: Must have downloaded the AudioClip only once, and Only one AudioCLip must exist in cache folder
             Assert.AreEqual(1, requestCalls, "Server must have been hit exactly once.");
-            Assert.IsTrue(Directory.Exists(Client._cacheDir), "Cache folder should have been created.");
-            Assert.AreEqual(1, Directory.GetFiles(Client._cacheDir, "*.mp3").Length,
+            Assert.IsTrue(Directory.Exists(Client.CacheDirectoryPath()), "Cache folder should have been created.");
+            Assert.AreEqual(1, Directory.GetFiles(Client.CacheDirectoryPath(), "*.mp3").Length,
                 "Client should have cached exactly one .mp3 file.");
         });
 }

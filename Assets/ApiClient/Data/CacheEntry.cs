@@ -3,7 +3,7 @@ using System;
 
 namespace ApiClientLib
 {
-    internal class CacheEntry
+    internal sealed class CacheEntry
     {
         [JsonProperty("url")] public string Url { get; set; }
         [JsonProperty("cached_at")] public DateTime CachedAt { get; set; }

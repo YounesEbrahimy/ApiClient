@@ -13,7 +13,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.GetAsync("api/v1/hang", timeout: timeout),
+                () => Client.GetAsync("api/v1/hang", timeout: timeout),
                 timeout
             );
         });
@@ -25,7 +25,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.GetAsync<TestPayload>("api/v1/hang", timeout: timeout),
+                () => Client.GetAsync<TestPayload>("api/v1/hang", timeout: timeout),
                 timeout
             );
         });
@@ -37,7 +37,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.PostAsync("api/v1/hang", string.Empty, timeout: timeout),
+                () => Client.PostAsync("api/v1/hang", string.Empty, timeout: timeout),
                 timeout
             );
         });
@@ -49,7 +49,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.PostAsync<TestPayload>("api/v1/hang", string.Empty, timeout: timeout),
+                () => Client.PostAsync<TestPayload>("api/v1/hang", string.Empty, timeout: timeout),
                 timeout
             );
         });
@@ -61,7 +61,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.PutAsync("api/v1/hang", string.Empty, timeout: timeout),
+                () => Client.PutAsync("api/v1/hang", string.Empty, timeout: timeout),
                 timeout
             );
         });
@@ -73,7 +73,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.PutAsync<TestPayload>("api/v1/hang", string.Empty, timeout: timeout),
+                () => Client.PutAsync<TestPayload>("api/v1/hang", string.Empty, timeout: timeout),
                 timeout
             );
         });
@@ -85,7 +85,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.PatchAsync("api/v1/hang", string.Empty, timeout: timeout),
+                () => Client.PatchAsync("api/v1/hang", string.Empty, timeout: timeout),
                 timeout
             );
         });
@@ -97,7 +97,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.PatchAsync<TestPayload>("api/v1/hang", string.Empty, timeout: timeout),
+                () => Client.PatchAsync<TestPayload>("api/v1/hang", string.Empty, timeout: timeout),
                 timeout
             );
         });
@@ -109,7 +109,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.DeleteAsync("api/v1/hang", timeout: timeout),
+                () => Client.DeleteAsync("api/v1/hang", timeout: timeout),
                 timeout
             );
         });
@@ -121,7 +121,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.DeleteAsync<TestPayload>("api/v1/hang", timeout: timeout),
+                () => Client.DeleteAsync<TestPayload>("api/v1/hang", timeout: timeout),
                 timeout
             );
         });
@@ -133,7 +133,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.GetSpriteAsync(MockServer.ServerUrl + "test.png", timeout: timeout),
+                () => Client.GetSpriteAsync("test.png", timeout: timeout),
                 timeout
             );
         });
@@ -145,7 +145,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.GetCachedSpriteAsync(MockServer.ServerUrl + "test.png", timeout: timeout),
+                () => Client.GetCachedSpriteAsync("test.png", timeout: timeout),
                 timeout
             );
         });
@@ -157,7 +157,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.GetAudioClipAsync(MockServer.ServerUrl + "test.mp3", timeout: timeout),
+                () => Client.GetAudioClipAsync("test.mp3", timeout: timeout),
                 timeout
             );
         });
@@ -169,14 +169,14 @@ public class ApiClientTimeoutTests : ApiClientTestBase
             var timeout = 1;
             await TestRequestTimeout(
                 MockServer,
-                Client.GetCachedAudioClipAsync(MockServer.ServerUrl + "test.mp3", timeout: timeout),
+                () => Client.GetCachedAudioClipAsync("test.mp3", timeout: timeout),
                 timeout
             );
         });
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static async UniTask TestRequestTimeout(MockHttpServer server, UniTask requestTask, int timeout)
+    private static async UniTask TestRequestTimeout(MockHttpServer server, Func<UniTask> requestFunc, int timeout)
     {
         // Arrange
         server.DelayMilliseconds = (timeout + 1) * 1000; // Force server to wait more than the request's timeout
@@ -184,7 +184,7 @@ public class ApiClientTimeoutTests : ApiClientTestBase
         // Act & Assert
         try
         {
-            await requestTask;
+            await requestFunc();
             Assert.Fail("Expected TimeoutException, but the request completed.");
         }
         catch (TimeoutException)
