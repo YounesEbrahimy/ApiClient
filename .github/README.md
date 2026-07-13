@@ -465,6 +465,7 @@ ApiClient features a custom Unity Editor window to inspect and log all network a
 
 To open the logger window in Unity, go to **Window → ApiClient → Logger**. This utility provides:
 - **Real-Time Logs**: View a list of all outgoing and incoming requests as they execute.
+  - **Visual Color-Coding**: Successful requests are colorless, failed requests appear red (displaying the thrown exception type badge at the end of the row), and cached requests appear blue.
 - **Advanced Filtering**:
   - **Text Search**: Filter logs instantly by URL, request body, response body, or error messages.
   - **Success/Fail State**: Filter by Success, Fail, or All requests.
