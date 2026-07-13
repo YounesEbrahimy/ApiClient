@@ -478,6 +478,23 @@ To open the logger window in Unity, go to **Window → ApiClient → Logger**. T
   - Formatted key-value lists for request headers, query parameters, and response headers.
   - Rich exception type badges and detailed error message fields on failures.
 
+**Logger Window screenshots:**
+
+- Lists all captured requests, From all ApiClient instances.
+![Screenshot_01](images/LoggerWindow/LoggerWindow_SS_01.jpg)
+
+- Expanded view, clicking each row will expand it and shows full details.
+![Screenshot_02](images/LoggerWindow/LoggerWindow_SS_02.jpg)
+
+- Color coding failed requests, Along with a badge of the exception's type and error message.
+![Screenshot_03](images/LoggerWindow/LoggerWindow_SS_03.jpg)
+
+- Color coding cache hit requests, With special character "C" instead of status code.
+![Screenshot_04](images/LoggerWindow/LoggerWindow_SS_04.jpg)
+
+- Another example of an expanded failed request.
+![Screenshot_05](images/LoggerWindow/LoggerWindow_SS_05.jpg)
+
 ---
 
 ## 🛡️ License
