@@ -37,10 +37,22 @@ namespace ApiClientLib
     {
         // ── Instance ID ───────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Gets the unique integer identifier for this client instance.
+        /// Useful for correlating events and logs from a specific client.
+        /// </summary>
         int InstanceID { get; }
 
         // ── Events ────────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Event triggered when any HTTP request completes, either successfully or with an error.
+        /// </summary>
+        /// <remarks>
+        /// This event is useful for global logging, analytics, debugging, or custom response handling.
+        /// The event argument <see cref="ApiEventData"/> provides rich metadata about the request,
+        /// including URLs, headers, duration, status codes, and any exceptions occurred.
+        /// </remarks>
         public event Action<ApiEventData> OnRequestCompleted;
 
         // ── Base URL ──────────────────────────────────────────────────────────────
@@ -82,6 +94,9 @@ namespace ApiClientLib
         /// </summary>
         /// <param name="key">The header name (e.g. <c>"Authorization"</c>).</param>
         /// <param name="value">The header value (e.g. <c>"Bearer &lt;token&gt;"</c>).</param>
+        /// <exception cref="System.ArgumentNullException">
+        /// Thrown if <paramref name="key"/> is <c>null</c>.
+        /// </exception>
         void AddHeader(string key, string value);
 
         /// <summary>
@@ -101,7 +116,10 @@ namespace ApiClientLib
         /// Deletes the contents of the cache folder, and resets the indexes.
         /// </summary>
         /// <param name="ct">Token used to cancel the operation.</param>
-        UniTask InvalidateCacheAsync(CancellationToken ct);
+        /// <exception cref="System.OperationCanceledException">
+        /// Thrown if the cancellation token <paramref name="ct"/> is canceled.
+        /// </exception>
+        UniTask InvalidateCacheAsync(CancellationToken ct = default);
 
         // ── GET ───────────────────────────────────────────────────────────────────
 
@@ -120,9 +138,11 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
+        /// <returns>The HTTP status code of the response.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response.</exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<int> GetAsync(string url, IReadOnlyDictionary<string, string> customHeaders = null,
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
@@ -147,14 +167,17 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>The response body deserialized as <typeparamref name="T"/>.</returns>
+        /// <returns>An <see cref="ApiResponse{T}"/> containing the HTTP status code and the deserialized response body of type <typeparamref name="T"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">
         /// Thrown on a non-2xx HTTP response, or if the server returns a body-less status code
         /// (e.g. 204 No Content) when a response body is expected.
         /// </exception>
-        /// <exception cref="JsonException">Thrown if the response body cannot be deserialized into <typeparamref name="T"/>.</exception>
+        /// <exception cref="JsonException">
+        /// Thrown if the response is empty/null, or if the response body cannot be deserialized into <typeparamref name="T"/>.
+        /// </exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<ApiResponse<T>> GetAsync<T>(string url, IReadOnlyDictionary<string, string> customHeaders = null,
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
@@ -181,10 +204,12 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
+        /// <returns>The HTTP status code of the response.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response.</exception>
         /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized to JSON.</exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<int> PostAsync(string url, object body, IReadOnlyDictionary<string, string> customHeaders = null,
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
@@ -213,14 +238,17 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>The response body deserialized as <typeparamref name="T"/>.</returns>
+        /// <returns>An <see cref="ApiResponse{T}"/> containing the HTTP status code and the deserialized response body of type <typeparamref name="T"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">
         /// Thrown on a non-2xx HTTP response, or if the server returns a body-less status code
         /// when a response body is expected.
         /// </exception>
-        /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized, or if the response cannot be deserialized into <typeparamref name="T"/>.</exception>
+        /// <exception cref="JsonException">
+        /// Thrown if <paramref name="body"/> cannot be serialized, if the response is empty/null, or if the response cannot be deserialized into <typeparamref name="T"/>.
+        /// </exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<ApiResponse<T>> PostAsync<T>(string url, object body,
             IReadOnlyDictionary<string, string> customHeaders = null,
@@ -248,10 +276,12 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
+        /// <returns>The HTTP status code of the response.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response.</exception>
         /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized to JSON.</exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<int> PutAsync(string url, object body, IReadOnlyDictionary<string, string> customHeaders = null,
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
@@ -280,14 +310,17 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>The response body deserialized as <typeparamref name="T"/>.</returns>
+        /// <returns>An <see cref="ApiResponse{T}"/> containing the HTTP status code and the deserialized response body of type <typeparamref name="T"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">
         /// Thrown on a non-2xx HTTP response, or if the server returns a body-less status code
         /// when a response body is expected.
         /// </exception>
-        /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized, or if the response cannot be deserialized into <typeparamref name="T"/>.</exception>
+        /// <exception cref="JsonException">
+        /// Thrown if <paramref name="body"/> cannot be serialized, if the response is empty/null, or if the response cannot be deserialized into <typeparamref name="T"/>.
+        /// </exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<ApiResponse<T>> PutAsync<T>(string url, object body,
             IReadOnlyDictionary<string, string> customHeaders = null,
@@ -315,10 +348,12 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
+        /// <returns>The HTTP status code of the response.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response.</exception>
         /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized to JSON.</exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<int> PatchAsync(string url, object body, IReadOnlyDictionary<string, string> customHeaders = null,
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
@@ -347,14 +382,17 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>The response body deserialized as <typeparamref name="T"/>.</returns>
+        /// <returns>An <see cref="ApiResponse{T}"/> containing the HTTP status code and the deserialized response body of type <typeparamref name="T"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">
         /// Thrown on a non-2xx HTTP response, or if the server returns a body-less status code
         /// when a response body is expected.
         /// </exception>
-        /// <exception cref="JsonException">Thrown if <paramref name="body"/> cannot be serialized, or if the response cannot be deserialized into <typeparamref name="T"/>.</exception>
+        /// <exception cref="JsonException">
+        /// Thrown if <paramref name="body"/> cannot be serialized, if the response is empty/null, or if the response cannot be deserialized into <typeparamref name="T"/>.
+        /// </exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<ApiResponse<T>> PatchAsync<T>(string url, object body,
             IReadOnlyDictionary<string, string> customHeaders = null,
@@ -378,9 +416,11 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
+        /// <returns>The HTTP status code of the response.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response.</exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<int> DeleteAsync(string url, IReadOnlyDictionary<string, string> customHeaders = null,
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
@@ -405,14 +445,17 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>The response body deserialized as <typeparamref name="T"/>.</returns>
+        /// <returns>An <see cref="ApiResponse{T}"/> containing the HTTP status code and the deserialized response body of type <typeparamref name="T"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="ApiException">
         /// Thrown on a non-2xx HTTP response, or if the server returns a body-less status code
         /// when a response body is expected.
         /// </exception>
-        /// <exception cref="JsonException">Thrown if the response cannot be deserialized into <typeparamref name="T"/>.</exception>
+        /// <exception cref="JsonException">
+        /// Thrown if the response is empty/null, or if the response cannot be deserialized into <typeparamref name="T"/>.
+        /// </exception>
         /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<ApiResponse<T>> DeleteAsync<T>(string url, IReadOnlyDictionary<string, string> customHeaders = null,
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
@@ -436,10 +479,12 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>A <see cref="Sprite"/> created from the downloaded image data.</returns>
+        /// <returns>A <see cref="SpriteResponse"/> containing the HTTP status code and the created <see cref="Sprite"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
+        /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response or a body-less response.</exception>
         /// <exception cref="BadSpriteException">Thrown if the downloaded data cannot be decoded into a valid texture.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<SpriteResponse> GetSpriteAsync(string url,
             IReadOnlyDictionary<string, string> customHeaders = null,
@@ -477,10 +522,12 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request or cache I/O.</param>
-        /// <returns>A <see cref="Sprite"/> either loaded from cache or freshly downloaded.</returns>
+        /// <returns>A <see cref="SpriteResponse"/> containing the HTTP status code (or -1 if served from cache) and the created <see cref="Sprite"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
+        /// <exception cref="InvalidUrlException">Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address.</exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response or a body-less response during download.</exception>
         /// <exception cref="BadSpriteException">Thrown if the downloaded or cached data cannot be decoded into a valid texture.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<SpriteResponse> GetCachedSpriteAsync(string url, int cacheDays = 14,
             IReadOnlyDictionary<string, string> customHeaders = null,
@@ -520,10 +567,14 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request.</param>
-        /// <returns>An <see cref="AudioClip"/> loaded from the downloaded audio data.</returns>
+        /// <returns>An <see cref="AudioClipResponse"/> containing the HTTP status code and the loaded <see cref="AudioClip"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
+        /// <exception cref="InvalidUrlException">
+        /// Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address, or if it does not contain a file extension.
+        /// </exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response or a body-less response.</exception>
         /// <exception cref="BadAudioClipException">Thrown if the downloaded data cannot be decoded into a valid <see cref="AudioClip"/>.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<AudioClipResponse> GetAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
             IReadOnlyDictionary<string, string> customHeaders = null,
@@ -572,13 +623,14 @@ namespace ApiClientLib
         /// <param name="urlType">Determines whether url should be appended to the base url.</param>
         /// <param name="timeout">Request timeout in seconds. Defaults to <c>10</c>.</param>
         /// <param name="ct">Token used to cancel the in-flight request or cache I/O.</param>
-        /// <returns>An <see cref="AudioClip"/> either loaded from cache or freshly downloaded.</returns>
+        /// <returns>An <see cref="AudioClipResponse"/> containing the HTTP status code (or -1 if served from cache) and the loaded <see cref="AudioClip"/>.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="url"/> is <c>null</c>.</exception>
         /// <exception cref="InvalidUrlException">
-        /// Thrown immediately if <paramref name="url"/> does not contain a file extension.
+        /// Thrown if the resolved URL is not a valid absolute HTTP/HTTPS address, or if it does not contain a file extension.
         /// </exception>
         /// <exception cref="ApiException">Thrown on a non-2xx HTTP response during download.</exception>
         /// <exception cref="BadAudioClipException">Thrown if the cached or downloaded data cannot be decoded into a valid <see cref="AudioClip"/>.</exception>
-        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is cancelled.</exception>
+        /// <exception cref="System.OperationCanceledException">Thrown if <paramref name="ct"/> is canceled.</exception>
         /// <exception cref="System.TimeoutException">Thrown if the request times out.</exception>
         UniTask<AudioClipResponse> GetCachedAudioClipAsync(string url, AudioType audioType = AudioType.UNKNOWN,
             int cacheDays = 14, IReadOnlyDictionary<string, string> customHeaders = null,
