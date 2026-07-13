@@ -156,6 +156,8 @@ A unique integer identifier for the `ApiClient` instance. Useful for correlating
 
 Event triggered when any HTTP request completes (successfully or with an error). The event payload <see cref="ApiEventData"/> contains detailed information about URLs, headers, payload, status codes, duration, and exceptions. (Note: For cache hits, the `StatusCode` is `-1` and the request duration is near 0.)
 
+> ⚠️ **Performance & Compilation Notice:** This event only fires when running inside the Unity Editor or when the `APICLIENT_LOGGING_ENABLED` custom compiler symbol is defined. Because capturing full request/response payloads, headers, and metadata carries a performance cost, it should be reserved for debugging, custom profiling, or dedicated log monitoring.
+
 ```csharp
 client.OnRequestCompleted += (ApiEventData eventData) =>
 {
