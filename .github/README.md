@@ -463,10 +463,17 @@ ApiClient features a custom Unity Editor window to inspect and log all network a
 
 ### ApiClient Logger Window
 
-To open the logger window in Unity, go to **Window → API Client Logger**. This window provides:
-- A real-time log list of all outgoing and incoming requests.
-- Correlation of logs by specific client `InstanceID` and timestamp.
-- Detailed inspection panel displaying request headers, query parameters, request body, response code, response headers, response body, duration, and exceptions.
+To open the logger window in Unity, go to **Window → ApiClient → Logger**. This utility provides:
+- **Real-Time Logs**: View a list of all outgoing and incoming requests as they execute.
+- **Advanced Filtering**:
+  - **Text Search**: Filter logs instantly by URL, request body, response body, or error messages.
+  - **Success/Fail State**: Filter by Success, Fail, or All requests.
+  - **Request Method**: Toggle visibility for individual HTTP methods (GET, POST, PUT, etc.) and asset methods (Sprite, AudioClip).
+  - **Status Code & Instance ID**: Filter logs by specific HTTP status codes (or `C` for cache hits) and isolate requests sent by a specific client instance ID.
+- **Interactive Log Inspector**: Click any log entry to expand it and inspect:
+  - Pretty-printed, indented JSON for both Request and Response body payloads.
+  - Formatted key-value lists for request headers, query parameters, and response headers.
+  - Rich exception type badges and detailed error message fields on failures.
 
 ---
 
