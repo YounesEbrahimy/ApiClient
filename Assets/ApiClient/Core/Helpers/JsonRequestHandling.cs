@@ -12,7 +12,7 @@ namespace ApiClientLib.Helpers
     internal static class JsonRequestHandling
     {
         internal static async UniTask<ApiResponse<T>> HandleJsonWebRequestAsync<T>(bool processResponse,
-            Action<ApiEventData> onRequestCompleted, RequestMethod method,
+            Action<ApiEventData> onRequestCompleted, Action<int> onRequestStatusCodeResolved, RequestMethod method,
             string url, string baseUrl, object body, IReadOnlyDictionary<string, string> persistentHeaders,
             IReadOnlyDictionary<string, string> customHeaders, IReadOnlyDictionary<string, string> queryParams,
             UrlType urlType, int timeout, CancellationToken ct, int instanceID)
@@ -40,6 +40,8 @@ namespace ApiClientLib.Helpers
             }
             finally
             {
+                var statusCode = (int)(req?.responseCode ?? 0);
+                onRequestStatusCodeResolved?.Invoke(statusCode);
                 Logging.ExecuteLogTrigger(true, processResponse, false, cleanUrl, method, timeout, persistentHeaders,
                     customHeaders, queryParams, req, startTime, onRequestCompleted, instanceID, ex: exception);
                 req?.Dispose();
