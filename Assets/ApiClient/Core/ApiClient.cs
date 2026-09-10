@@ -31,6 +31,7 @@ namespace ApiClientLib
         // ── Events ────────────────────────────────────────────────────────────────
 
         public event Action<ApiEventData> OnRequestCompleted;
+        public event Action<int> OnRequestStatusCodeResolved;
 
         // ── Base Url ──────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ namespace ApiClientLib
             int timeout = 10, CancellationToken ct = default)
         {
             return (await JsonRequestHandling.HandleJsonWebRequestAsync<AsyncUnit>(false, OnRequestCompleted,
-                RequestMethod.GET,
+                OnRequestStatusCodeResolved, RequestMethod.GET,
                 url, BaseUrl, null, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID)).StatusCode;
         }
 
@@ -69,7 +70,8 @@ namespace ApiClientLib
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
             int timeout = 10, CancellationToken ct = default)
         {
-            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted, RequestMethod.GET,
+            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted,
+                OnRequestStatusCodeResolved, RequestMethod.GET,
                 url, BaseUrl, null, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID);
         }
 
@@ -81,8 +83,8 @@ namespace ApiClientLib
             int timeout = 10, CancellationToken ct = default)
         {
             return (await JsonRequestHandling.HandleJsonWebRequestAsync<AsyncUnit>(false, OnRequestCompleted,
-                RequestMethod.POST, url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct,
-                InstanceID)).StatusCode;
+                OnRequestStatusCodeResolved, RequestMethod.POST, url, BaseUrl, body, Headers, customHeaders,
+                queryParams, urlType, timeout, ct, InstanceID)).StatusCode;
         }
 
         public async UniTask<ApiResponse<T>> PostAsync<T>(string url, object body,
@@ -90,7 +92,8 @@ namespace ApiClientLib
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
             int timeout = 10, CancellationToken ct = default)
         {
-            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted, RequestMethod.POST,
+            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted,
+                OnRequestStatusCodeResolved, RequestMethod.POST,
                 url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID);
         }
 
@@ -102,7 +105,7 @@ namespace ApiClientLib
             int timeout = 10, CancellationToken ct = default)
         {
             return (await JsonRequestHandling.HandleJsonWebRequestAsync<AsyncUnit>(false, OnRequestCompleted,
-                RequestMethod.PUT,
+                OnRequestStatusCodeResolved, RequestMethod.PUT,
                 url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID)).StatusCode;
         }
 
@@ -111,7 +114,8 @@ namespace ApiClientLib
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
             int timeout = 10, CancellationToken ct = default)
         {
-            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted, RequestMethod.PUT,
+            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted,
+                OnRequestStatusCodeResolved, RequestMethod.PUT,
                 url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID);
         }
 
@@ -123,8 +127,8 @@ namespace ApiClientLib
             int timeout = 10, CancellationToken ct = default)
         {
             return (await JsonRequestHandling.HandleJsonWebRequestAsync<AsyncUnit>(false, OnRequestCompleted,
-                RequestMethod.PATCH, url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct,
-                InstanceID)).StatusCode;
+                OnRequestStatusCodeResolved, RequestMethod.PATCH, url, BaseUrl, body, Headers, customHeaders,
+                queryParams, urlType, timeout, ct, InstanceID)).StatusCode;
         }
 
         public async UniTask<ApiResponse<T>> PatchAsync<T>(string url, object body,
@@ -132,7 +136,8 @@ namespace ApiClientLib
             IReadOnlyDictionary<string, string> queryParams = null, UrlType urlType = UrlType.Relative,
             int timeout = 10, CancellationToken ct = default)
         {
-            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted, RequestMethod.PATCH,
+            return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted,
+                OnRequestStatusCodeResolved, RequestMethod.PATCH,
                 url, BaseUrl, body, Headers, customHeaders, queryParams, urlType, timeout, ct, InstanceID);
         }
 
@@ -143,8 +148,8 @@ namespace ApiClientLib
             int timeout = 10, CancellationToken ct = default)
         {
             return (await JsonRequestHandling.HandleJsonWebRequestAsync<AsyncUnit>(false, OnRequestCompleted,
-                RequestMethod.DELETE, url, BaseUrl, null, Headers, customHeaders, queryParams, urlType, timeout, ct,
-                InstanceID)).StatusCode;
+                OnRequestStatusCodeResolved, RequestMethod.DELETE, url, BaseUrl, null, Headers, customHeaders,
+                queryParams, urlType, timeout, ct, InstanceID)).StatusCode;
         }
 
         public async UniTask<ApiResponse<T>> DeleteAsync<T>(string url,
@@ -153,8 +158,8 @@ namespace ApiClientLib
             int timeout = 10, CancellationToken ct = default)
         {
             return await JsonRequestHandling.HandleJsonWebRequestAsync<T>(true, OnRequestCompleted,
-                RequestMethod.DELETE, url, BaseUrl, null, Headers, customHeaders, queryParams, urlType, timeout, ct,
-                InstanceID);
+                OnRequestStatusCodeResolved, RequestMethod.DELETE, url, BaseUrl, null, Headers, customHeaders,
+                queryParams, urlType, timeout, ct, InstanceID);
         }
 
         // ── Sprite Methods ────────────────────────────────────────────────────────
@@ -187,6 +192,8 @@ namespace ApiClientLib
             }
             finally
             {
+                var statusCode = (int)(req?.responseCode ?? 0);
+                OnRequestStatusCodeResolved?.Invoke(statusCode);
                 Logging.ExecuteLogTrigger(false, false, false, cleanUrl, RequestMethod.GET_SPRITE, timeout, Headers,
                     customHeaders, queryParams, req, startTime, OnRequestCompleted, InstanceID, ex: exception);
                 req?.Dispose();
@@ -223,7 +230,7 @@ namespace ApiClientLib
                         () => File.ReadAllBytes(path), cancellationToken: token);
                     return SpriteRequestHandling.BytesToSprite(bytes);
                 }, cacheDays, requestReference, RequestMethod.GET_SPRITE, timeout, Headers, customHeaders, queryParams,
-                ct, InstanceID, OnRequestCompleted, "png");
+                ct, InstanceID, OnRequestCompleted, OnRequestStatusCodeResolved, "png");
             return new SpriteResponse(operationResult.statusCode, operationResult.asset);
         }
 
@@ -266,6 +273,8 @@ namespace ApiClientLib
             }
             finally
             {
+                var statusCode = (int)(req?.responseCode ?? 0);
+                OnRequestStatusCodeResolved?.Invoke(statusCode);
                 Logging.ExecuteLogTrigger(false, false, false, cleanUrl, RequestMethod.GET_AUDIOCLIP, timeout, Headers,
                     customHeaders, queryParams, req, startTime, OnRequestCompleted, InstanceID, ex: exception);
                 req?.Dispose();
@@ -297,9 +306,10 @@ namespace ApiClientLib
                         customHeaders, queryParams, timeout, token);
                 },
                 deserializeFromPath: (path, token) =>
-                    AudioClipRequestHandling.LoadAudioClipFromPathAsync(path, resolvedType, token), cacheDays,
-                requestReference, RequestMethod.GET_AUDIOCLIP, timeout, Headers, customHeaders, queryParams, ct,
-                InstanceID, OnRequestCompleted, null);
+                {
+                    return AudioClipRequestHandling.LoadAudioClipFromPathAsync(path, resolvedType, token);
+                }, cacheDays, requestReference, RequestMethod.GET_AUDIOCLIP, timeout, Headers, customHeaders,
+                queryParams, ct, InstanceID, OnRequestCompleted, OnRequestStatusCodeResolved, null);
             return new AudioClipResponse(operationResult.statusCode, operationResult.asset);
         }
     }

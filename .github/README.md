@@ -49,7 +49,7 @@
 2. Click the **+** button → **Add package from git URL ...**
 3. Enter:
    ```
-   https://github.com/YounesEbrahimy/ApiClient.git?path=/Assets/ApiClient/#1.5.0
+   https://github.com/YounesEbrahimy/ApiClient.git?path=/Assets/ApiClient/#1.6.0
    ```
 
 ### Manual
@@ -168,6 +168,22 @@ client.OnRequestCompleted += (ApiEventData eventData) =>
     }
 };
 ```
+
+#### `event Action<int> OnRequestStatusCodeResolved`
+
+Event triggered whenever an HTTP request resolves or finishes, passing the resulting HTTP status code as an integer. This is a lightweight, per-instance event that is unconditionally fired on every platform (both inside the Unity Editor and in standalone player builds) regardless of compilation symbols.
+
+- Returns the HTTP response code (e.g., `200`, `201`, `204`, `400`, `404`, `500`) when a server response was received.
+- Returns `-1` when the asset was served directly from the local disk cache (`GetCachedSpriteAsync`, `GetCachedAudioClipAsync`).
+- Returns `0` if the request failed before obtaining a response from the server (e.g., connection lost, timeout, or invalid URL).
+
+```csharp
+client.OnRequestStatusCodeResolved += (int statusCode) =>
+{
+    Debug.Log($"Request finished with status code: {statusCode}");
+};
+```
+
 
 ---
 

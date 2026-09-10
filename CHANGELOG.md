@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0]
+
+### Added
+- `OnRequestStatusCodeResolved` event on `IApiClient` — triggers whenever an HTTP request resolves or finishes, passing the resulting HTTP status code as an integer (`-1` for cache hits, `0` for connection/network failures).
+
+### Breaking Changes
+- **Interface Signature Modifications:** Added `OnRequestStatusCodeResolved` event callback to the `IApiClient` interface. Custom mocks or third-party implementations of `IApiClient` must implement this new member to compile.
+
 ## [1.5.0]
 
 ### Added

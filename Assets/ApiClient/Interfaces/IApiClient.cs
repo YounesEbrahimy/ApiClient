@@ -55,6 +55,25 @@ namespace ApiClientLib
         /// </remarks>
         public event Action<ApiEventData> OnRequestCompleted;
 
+        /// <summary>
+        /// Event triggered whenever an HTTP request resolves or finishes, providing the final HTTP status code as an integer.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This event is triggered on every request resolution for this client instance (not globally),
+        /// regardless of whether the request succeeded or threw an exception.
+        /// </para>
+        /// <para>
+        /// The delivered integer status code represents:
+        /// <list type="bullet">
+        /// <item><description>A standard HTTP response status code (e.g. <c>200</c>, <c>201</c>, <c>204</c>, <c>400</c>, <c>404</c>, <c>500</c>) if a server response was received.</description></item>
+        /// <item><description><c>-1</c> if the request was resolved from the local disk cache (<see cref="GetCachedSpriteAsync"/>, <see cref="GetCachedAudioClipAsync"/>).</description></item>
+        /// <item><description><c>0</c> if the request failed before receiving a server response (e.g. network disconnection, timeout, DNS resolution failure, or an invalid URL format).</description></item>
+        /// </list>
+        /// </para>
+        /// </remarks>
+        public event Action<int> OnRequestStatusCodeResolved;
+
         // ── Base URL ──────────────────────────────────────────────────────────────
 
         /// <summary>
