@@ -11,11 +11,17 @@ permissions:
   contents: read
   checks: write
 
+env:
+  UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+  UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+
 jobs:
   test:
-    name: Run EditMode Tests
+    name: Run Unity Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    container:
+      image: unityci/editor:ubuntu-6000.3.8f1-linux-il2cpp-3
 
     steps:
       - name: Checkout repository
@@ -29,22 +35,32 @@ jobs:
           restore-keys: |
             Library-${{ runner.os }}-
 
-      - name: Run tests
-        uses: game-ci/unity-test-runner@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          projectPath: .
-          unityVersion: auto
-          testMode: editmode
-          coverageOptions: useProjectSettings
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
+      - name: Activate Unity
+        run: |
+          /opt/unity/Editor/Unity -batchmode -nographics -quit -logFile /dev/stdout \
+            -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"
 
-      - name: Upload test results
+      - name: Import project
+        run: /opt/unity/Editor/Unity -projectPath . -batchmode -nographics -quit -logFile /dev/stdout
+
+      - name: EditMode tests
+        run: |
+          mkdir -p artifacts
+          /opt/unity/Editor/Unity -projectPath . -batchmode -nographics -runTests -testPlatform EditMode -testResults artifacts/editmode-results.xml -logFile /dev/stdout
+
+      - name: Return license
         if: always()
-        uses: actions/upload-artifact@v4
+        run: /opt/unity/Editor/Unity -batchmode -nographics -returnlicense -logFile /dev/stdout -quit || true
+
+      - name: Fix git safe directory
+        if: ${{ !cancelled() }}
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: EditMode Test Summary
+        uses: dorny/test-reporter@v2
+        if: ${{ !cancelled() }}
         with:
-          name: unity-test-results
-          path: artifacts
+          name: EditMode Tests
+          path: 'artifacts/editmode-results.xml'
+          reporter: dotnet-nunit
+          only-summary: 'true'
