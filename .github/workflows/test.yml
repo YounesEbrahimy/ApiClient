@@ -64,3 +64,4 @@ jobs:
           path: 'artifacts/editmode-results.xml'
           reporter: dotnet-nunit
           only-summary: 'true'
+          use-actions-summary: 'false'
